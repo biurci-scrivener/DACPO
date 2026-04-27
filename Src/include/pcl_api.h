@@ -15,9 +15,9 @@
 
 int pcd_seg(char * path);
 
-//#define ORIENTED_POINTS std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, DIM>>>
+//#define ORIENTED_POINTS std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, (int)DIM>>>
 template<typename REAL, unsigned int DIM>
-int est_norm(const std::vector <Point<REAL, DIM>>& points, std::vector <Normal<REAL, DIM>>& normals, int k_neighbor = 5) {
+int est_norm(const std::vector <Point<REAL, DIM>>& points, std::vector <Normal<REAL, (int)DIM>>& normals, int k_neighbor = 5) {
     auto point_cloud = xyz2pcl(points);
     // create the normal estimation class, and pass the input dataset to it
     pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
@@ -82,7 +82,7 @@ std::vector<Point<REAL, DIM>> pcl2xyz(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
 }
 
 template <typename REAL, unsigned int DIM>
-pcl::PointCloud<pcl::PointNormal>::Ptr op2pcl(const std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, DIM>>>& points_normals){
+pcl::PointCloud<pcl::PointNormal>::Ptr op2pcl(const std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, (int)DIM>>>& points_normals){
     pcl::PointCloud<pcl::PointNormal>::Ptr cloud (new pcl::PointCloud<pcl::PointNormal>);
     for(int i=0;i<points_normals.size();i++){
         pcl::PointNormal pn;
@@ -96,10 +96,10 @@ pcl::PointCloud<pcl::PointNormal>::Ptr op2pcl(const std::vector<std::pair<Point<
 }
 
 template <typename REAL, unsigned int DIM>
-std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, DIM>>> pcl2op(pcl::PointCloud<pcl::PointNormal>::Ptr cloud){
-    std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, DIM>>> points_normals;
+std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, (int)DIM>>> pcl2op(pcl::PointCloud<pcl::PointNormal>::Ptr cloud){
+    std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, (int)DIM>>> points_normals;
     for(int i=0;i<cloud->size();i++){
-        std::pair<Point<REAL, DIM>, Normal<REAL, DIM>> pn;
+        std::pair<Point<REAL, DIM>, Normal<REAL, (int)DIM>> pn;
         for(int j=0;j<DIM;j++){
             pn.first[j] = cloud->points[i].data[j];
             pn.second.normal[j] = cloud->points[i].normal[j];
@@ -248,7 +248,7 @@ int pcl_euclidean_cluster_extraction(ORIENTED_POINTS points_normals,std::vector<
 
     // 对聚类中的每个点,在raw_points得到的kd树中找到最近的点,并将在points_normals中对应的点的法向量赋值给该点
     for(int i=0;i<raw_planes.size();i++){
-        std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, DIM>>> ops;
+        std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, (int)DIM>>> ops;
         for(auto& p:raw_planes[i]){
             std::vector<int> pointIdxNKNSearch(1);
             std::vector<float> pointNKNSquaredDistance(1);
