@@ -20,6 +20,9 @@ if(WIN32)
 endif()
 
 # Find required packages
+
+find_package(MPI REQUIRED COMPONENTS C)
+
 find_package(PCL REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Boost REQUIRED)
