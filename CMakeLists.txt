@@ -23,6 +23,7 @@ endif()
 
 find_package(MPI REQUIRED)
 
+find_package(Open3D REQUIRED)
 find_package(PCL REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Boost REQUIRED)
@@ -67,6 +68,7 @@ target_link_libraries(${PROJECT_NAME}
     ${Boost_LIBRARIES}
     OpenMP::OpenMP_CXX
     ${OPENGL_LIBRARIES}
+    Open3D::Open3D
 )
 
 # Windows specific libraries
@@ -116,4 +118,6 @@ message(STATUS "PCL version: ${PCL_VERSION}")
 message(STATUS "Eigen3 version: ${Eigen3_VERSION}")
 message(STATUS "Boost version: ${Boost_VERSION}")
 message(STATUS "OpenMP found: ${OpenMP_FOUND}")
+message(STATUS "Open3D version: ${Open3D_VERSION}")
+message(STATUS "Open3D found at: ${Open3D_DIR}")
 message(STATUS "=================================") 
