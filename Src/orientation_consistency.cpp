@@ -58,7 +58,7 @@ bool Rasterlization::isInsideTriangle(const Eigen::Vector2d &pxyP, const Eigen::
 
 inline double minin3(double a, double b, double c)
 {
-    return min(min(a, b), c);
+    return std::min(std::min(a, b), c);
 }
 
 void Rasterlization::updatePixelDepthBuffer(Eigen::MatrixXd &zBuffer, Eigen::MatrixXi &pixelSource, const Eigen::Vector2d &pxyA, const Eigen::Vector2d &pxyB, const Eigen::Vector2d &pxyC, double d, int i)
@@ -66,8 +66,8 @@ void Rasterlization::updatePixelDepthBuffer(Eigen::MatrixXd &zBuffer, Eigen::Mat
     // 计算三角形的边界
     int minX = std::floor(minin3(pxyA.x(), pxyB.x(), pxyC.x()));
     int minY = std::floor(minin3(pxyA.y(), pxyB.y(), pxyC.y()));
-    int maxX = std::ceil(max(max(pxyA.x(), pxyB.x()), pxyC.x()));
-    int maxY = std::ceil(max(max(pxyA.y(), pxyB.y()), pxyC.y()));
+    int maxX = std::ceil(std::max(std::max(pxyA.x(), pxyB.x()), pxyC.x()));
+    int maxY = std::ceil(std::max(std::max(pxyA.y(), pxyB.y()), pxyC.y()));
 
     // 剔除边界外的像素
     if (minX < 0 || minY < 0 || maxX >= zBuffer.cols() || maxY >= zBuffer.rows())
@@ -213,9 +213,9 @@ void Rasterlization::_rasterlization(
         Eigen::Vector2d pxyC = viewportTransform(cxy.row(triangles[i].v3).transpose(), img->width, img->height);
         double zA = cxyzd.row(triangles[i].v1).z(), zB = cxyzd.row(triangles[i].v2).z(), zC = cxyzd.row(triangles[i].v3).z();
         triangles_depths[i] = (zA + zB + zC) / 3.0f;
-        max_depth_gap = max(max_depth_gap, abs(zA - zB));
-        max_depth_gap = max(max_depth_gap, abs(zA - zC));
-        max_depth_gap = max(max_depth_gap, abs(zB - zC));
+        max_depth_gap = std::max(max_depth_gap, abs(zA - zB));
+        max_depth_gap = std::max(max_depth_gap, abs(zA - zC));
+        max_depth_gap = std::max(max_depth_gap, abs(zB - zC));
         double d = triangles_depths[i];
         updatePixelDepthBuffer(img->zBuffer, img->triangle_id, pxyA, pxyB, pxyC, d, i);
     }
@@ -317,7 +317,7 @@ double Rasterlization::_orientation_consistence(
    //     printf("%d pixel has undefined orientation\n", NO_orientaion);
  //   }
     // return (double)max(inner_count,outer_count)/ (double)(inner_count+outer_count);// 比例会导致一些看得面片比较少的视角得分过高
-    return (double)max(inner_count,outer_count);
+    return (double)std::max(inner_count,outer_count);
 }
 
 /**

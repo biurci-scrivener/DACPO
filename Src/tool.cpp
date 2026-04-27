@@ -87,7 +87,7 @@ int change_args(std::vector<std::string>& args, std::string key, std::string val
             return i;
         }
     }
-    printf("\n\n!!chane_args error : key %s not found!!\n\n",key);
+    printf("\n\n!!chane_args error : key %s not found!!\n\n",key.c_str());
     return -1;
 }
 
@@ -99,7 +99,7 @@ int find_arg(std::vector<std::string>& args, std::string key){
             return i;
         }
     }
-    printf("\n\n!!find_arg error : key %s not found!!\n\n",key);
+    printf("\n\n!!find_arg error : key %s not found!!\n\n",key.c_str());
     return -1;
 }
 

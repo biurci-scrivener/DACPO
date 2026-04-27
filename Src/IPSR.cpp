@@ -297,7 +297,7 @@ UpdatePlan get_update_plan_by_name(std::string name)
         return update_plan_map[name];
     }
     else {
-        printf("no such plan %s", name);
+        printf("no such plan %s", name.c_str());
         assert(false);
         return nullptr;
     }

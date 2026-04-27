@@ -14,6 +14,31 @@
 // 定义一对多的映射，表示两个集合之间的一个一对多的映射，要求两个集合的元素都是自然数。
 #define MULTI_MAP std::vector<std::vector<int>>
 
+
+#if !defined(_WIN32)
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <filesystem>
+typedef unsigned long DWORD;
+#define INVALID_FILE_ATTRIBUTES ((DWORD)-1)
+inline DWORD GetFileAttributesA(const char* p) {
+    struct stat st;
+    return ::stat(p, &st) == 0 ? 0UL : INVALID_FILE_ATTRIBUTES;
+}
+inline int CreateDirectoryA(const char* p, void*) {
+    if (!p || !*p) return 1;
+    std::error_code ec;
+    std::filesystem::create_directories(p, ec);
+    return ec ? 0 : 1;
+}
+inline DWORD GetCurrentDirectoryA(DWORD bufsize, char* buf) {
+    return ::getcwd(buf, bufsize) ? (DWORD)strlen(buf) : 0UL;
+}
+#endif
+
+std::vector<std::vector<int>> flag2color(const std::vector<int>& flag);
+
 namespace lzd_tools{
     
     struct thread_safe_bool {

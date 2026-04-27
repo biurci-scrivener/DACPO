@@ -15,15 +15,23 @@
 #if defined(_WIN32)
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#endif
-#if defined(__linux__)
+#pragma comment(lib, "ws2_32.lib")
+#else
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <errno.h>
+typedef int SOCKET;
+#define INVALID_SOCKET (-1)
+#define SOCKET_ERROR   (-1)
+#define closesocket(s) ::close(s)
+#define WSAGetLastError() (errno)
+typedef int WSADATA;
+#define WSAStartup(a, b) (0)
+#define WSACleanup()     ((void)0)
+#define MAKEWORD(a, b)   (0)
 #endif
-
-#pragma comment(lib, "ws2_32.lib")
 
 namespace lzd_tools{
     class Socket {
