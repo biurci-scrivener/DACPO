@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(DACPO VERSION 1.0.0 LANGUAGES CXX)
+project(DACPO VERSION 1.0.0 LANGUAGES C CXX)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 14)
