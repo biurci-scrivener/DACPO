@@ -35,6 +35,9 @@ struct Period{
     Period();
 };
 
+template<typename REAL, unsigned int DIM>
+MESH shrink_boundary(const MESH& mesh, const POINTS_NORMALS& op,std::vector<REAL>& pmdist,int k = 20);
+
 extern std::map<int (*)(Period& p),std::string> update_plane_namelist;
 
 // 交互式更新

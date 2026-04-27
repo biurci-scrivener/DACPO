@@ -1251,7 +1251,7 @@ Normal<REAL, (int)DIM> get_rand_norm(int seed){
             continue;
         }
         else {
-            normalize<REAL, DIM>(n);
+            lzd_tools::normalize<REAL, DIM>(n);
             return n;
         }
     } while (true);
