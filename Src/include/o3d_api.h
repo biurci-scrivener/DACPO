@@ -1,6 +1,6 @@
 #pragma once
 #include <open3d/geometry/PointCloud.h>
-#include "Open3D/Open3D.h"
+#include <open3d/Open3D.h>
 #include "tools.h"
 
 void test_open3d();
