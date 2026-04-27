@@ -1394,7 +1394,7 @@ MESH clean_mesh(const MESH& mesh, const POINTS_NORMALS& op,std::vector<REAL>& pm
  * 至少在迭代期间，这个clean过程不应该产生更多的边界点
  */
 template<typename REAL, unsigned int DIM>
-MESH shrink_boundary(const MESH& mesh, const POINTS_NORMALS& op,std::vector<REAL>& pmdist,int k = 20){
+MESH shrink_boundary(const MESH& mesh, const POINTS_NORMALS& op,std::vector<REAL>& pmdist,int k){
     unsigned int n = mesh.first.size();
     unsigned int m = mesh.second.size();
     std::vector<int> t;
