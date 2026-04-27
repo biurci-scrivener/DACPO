@@ -153,14 +153,14 @@ struct NormalInfo
 	};
 };
 template<>
-const PlyProperty NormalInfo< float , 3 >::PlyProperties[] =
+inline const PlyProperty NormalInfo< float , 3 >::PlyProperties[] =
 {
 	{ "nx" , PLY_FLOAT , PLY_FLOAT , int( offsetof( Type , normal.coords[0] ) ) , 0 , 0 , 0 , 0 } ,
 	{ "ny" , PLY_FLOAT , PLY_FLOAT , int( offsetof( Type , normal.coords[1] ) ) , 0 , 0 , 0 , 0 } ,
 	{ "nz" , PLY_FLOAT , PLY_FLOAT , int( offsetof( Type , normal.coords[2] ) ) , 0 , 0 , 0 , 0 } ,
 };
 template<>
-const PlyProperty NormalInfo< double , 3 >::PlyProperties[] =
+inline const PlyProperty NormalInfo< double , 3 >::PlyProperties[] =
 {
 	{ "nx" , PLY_FLOAT , PLY_DOUBLE , int( offsetof( Type , normal.coords[0] ) ) , 0 , 0 , 0 , 0 } ,
 	{ "ny" , PLY_FLOAT , PLY_DOUBLE , int( offsetof( Type , normal.coords[1] ) ) , 0 , 0 , 0 , 0 } ,
@@ -266,7 +266,7 @@ struct NormalAndColorInfo
 	};
 };
 template<>
-const PlyProperty NormalAndColorInfo< float , 3 >::PlyProperties[] =
+inline const PlyProperty NormalAndColorInfo< float , 3 >::PlyProperties[] =
 {
 	{ "nx"    , PLY_FLOAT , PLY_FLOAT , int( offsetof( Type , normal.coords[0] ) ) , 0 , 0 , 0 , 0 } ,
 	{ "ny"    , PLY_FLOAT , PLY_FLOAT , int( offsetof( Type , normal.coords[1] ) ) , 0 , 0 , 0 , 0 } ,
@@ -279,7 +279,7 @@ const PlyProperty NormalAndColorInfo< float , 3 >::PlyProperties[] =
 	{ "blue"  , PLY_UCHAR , PLY_FLOAT , int( offsetof( Type , color .coords[2] ) ) , 0 , 0 , 0 , 0 }
 };
 template<>
-const PlyProperty NormalAndColorInfo< double , 3 >::PlyProperties[] =
+inline const PlyProperty NormalAndColorInfo< double , 3 >::PlyProperties[] =
 {
 	{ "nx"    , PLY_FLOAT , PLY_DOUBLE , int( offsetof( Type , normal.coords[0] ) ) , 0 , 0 , 0 , 0 } ,
 	{ "ny"    , PLY_FLOAT , PLY_DOUBLE , int( offsetof( Type , normal.coords[1] ) ) , 0 , 0 , 0 , 0 } ,
