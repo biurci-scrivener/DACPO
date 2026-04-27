@@ -2,7 +2,8 @@
 #define _UNSERTAIN //对于一些不确定的地方，使用assert进行检查
 #include <IPSR.h>
 #include <ipsr_controller.h>
-#include "3dparty\nlohmann\json.hpp"
+#include <random>
+#include "3dparty/nlohmann/json.hpp"
 #include <AuxAlg.h>
 #include <dipole.h>
 
@@ -12,15 +13,17 @@ extern nlohmann::json global_var::metric_j;// 效果、日志等
 
 namespace GRAPH_IPSR {
 
+	extern nlohmann::json static_conf;
+
 /*********************************************GRAPH**********************************************************/
 	// ipsr_handle 立方体
 	template<typename T>
 	using T_CUBE = std::vector<std::vector<std::vector<T>>>;
 
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	using IPSR_CUBE = T_CUBE<IPSR_HANDLE_P>;
 
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	using OP_CUBE = T_CUBE<POINTS_NORMALS>;
 
 	template<typename T>
@@ -36,7 +39,7 @@ namespace GRAPH_IPSR {
 	
 	// 顶点。每个顶点指向一个ipsr对象。
 	// 后续可能会加入置信度等属性
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class graph_vertex {
 	private:
 		std::vector<std::vector<float>> _diff_log;// _op中每个在_points_normals中的点的diff的log
@@ -76,11 +79,11 @@ namespace GRAPH_IPSR {
 			}
 			//if(sum == 0) assert(0);
 			float avg = sum / std::min(5,(int)var.size());
-			avg = max(1e-9f,avg);//防止除0,或者avg过小，导致某个点的置信度过大 FIX_ME diff的大小与点云大小有关
+			avg = std::max(1e-9f,avg);//防止除0,或者avg过小，导致某个点的置信度过大 FIX_ME diff的大小与点云大小有关
 			avg = 1.0 / avg;
 			// 取对数
 			avg = log(avg);
-			avg = max(0.0f,avg);
+			avg = std::max(0.0f,avg);
 			return avg;
 		}
 
@@ -148,7 +151,7 @@ namespace GRAPH_IPSR {
 			if (_handle->avg_max_var_log.size() > 0) {
 				REAL w = _handle->avg_max_var_log.back();
 				assert(w >= 0);
-				w = max(w,1e-3); // 如果diff=0,近似认为其有微量的更新(防止除零)
+				w = std::max(w,1e-3); // 如果diff=0,近似认为其有微量的更新(防止除零)
 				return (1 / w);
 			}
 			else return 0;
@@ -317,7 +320,7 @@ namespace GRAPH_IPSR {
 	// 有向边。
 	// start、end都是指向VERTEX的指针
 	// 后续可能会增加overlap等属性
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class graph_edge {
 		REAL weight;// 权重
 		REAL inv_weight;// 翻转一个节点后的权重。TODO
@@ -439,19 +442,19 @@ namespace GRAPH_IPSR {
 		}
 	};
 
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	using VERTEX = graph_vertex<REAL, DIM>;
 
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	using VERTEX_P = VERTEX<REAL, DIM>*;
 
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	using EDGE = graph_edge<REAL, DIM>;
 
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	using EDGE_P = EDGE<REAL, DIM>*;
 
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class edge_weight_calculator {
 	protected:
 		nlohmann::json caculate_res(const EDGE_P<REAL, DIM> edge){
@@ -474,14 +477,14 @@ namespace GRAPH_IPSR {
 		virtual void visualization(const EDGE_P<REAL, DIM> edge,std::string floder) = 0;
 	};
 
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class linked_graph;
 
 	/**
 	 * @brief 
 	 * weight = overlap部分中 start中的点与end中的点的平均角度差 * 两点的置信度的乘积
 	 */
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class overlap_diff_calculator : public edge_weight_calculator<REAL,DIM> {
 		bool use_confidence;
 	public:
@@ -511,7 +514,7 @@ namespace GRAPH_IPSR {
 			diff /= edge->overlap_idxs.size();
 			inv_diff /= edge->overlap_idxs.size();
 			weight = std::pair<REAL,REAL>(diff/(diff+inv_diff), inv_diff/(diff + inv_diff));
-			conf = max(diff, inv_diff) / (diff + inv_diff);
+			conf = std::max(diff, inv_diff) / (diff + inv_diff);
 		}
 
 		nlohmann::json get_config(){
@@ -558,7 +561,7 @@ namespace GRAPH_IPSR {
 			std::string log_path = floder + "/log.json";
 			nlohmann::json j;
 			j["config"] = get_config();
-			j["cal_res"] = caculate_res(edge);
+			j["cal_res"] = this->caculate_res(edge);
 			std::ofstream out(log_path);
 			out << j.dump(4);
 			out.close();
@@ -566,7 +569,7 @@ namespace GRAPH_IPSR {
 	};
 
 	// TODO 统一两种计算方式
-	// template<typename REAL, int DIM>
+	// template<typename REAL, unsigned int DIM>
 	// class ConsistencyCaculator:public edge_weight_calculator<REAL,DIM>{
 	// protected:
 	// 	std::map<VERTEX_P<REAL, DIM>, int> _vertex2idx;
@@ -593,7 +596,7 @@ namespace GRAPH_IPSR {
 	 * @brief 
 	 * weight为不同视角下，可见面片的朝向一致性的均值 
 	 */
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class consistency_calculator : public edge_weight_calculator<REAL, DIM> {
 		MeshConsistency<REAL,DIM>* _oc;
 		IPSR_Factory<REAL, DIM>* _factory;
@@ -634,7 +637,7 @@ namespace GRAPH_IPSR {
 
 		// 根据两个weight给出置信度
 		REAL _weight2conf(std::pair<REAL, REAL> weight) {
-			return max(weight.first, weight.second) / (weight.first + weight.second);
+			return std::max(weight.first, weight.second) / (weight.first + weight.second);
 		}
 
 		void _cal_edge_weight(const EDGE_P<REAL, DIM> edge, std::pair<REAL, REAL>& weight) {
@@ -706,8 +709,8 @@ namespace GRAPH_IPSR {
 
 					// 否则计算权重，并将其一并赋值给逆边
 					_cal_edge_weight(all_edges[i][j], _weight[s][e]);
-					_max_weight = max(_max_weight, max(_weight[s][e].first, _weight[s][e].second));
-					_min_weight = min(_min_weight, min(_weight[s][e].first, _weight[s][e].second));
+					_max_weight = std::max(_max_weight, std::max(_weight[s][e].first, _weight[s][e].second));
+					_min_weight = std::min(_min_weight, std::min(_weight[s][e].first, _weight[s][e].second));
 					_weight[e][s] = _weight[s][e];
 					++finished;
 					++finished;
@@ -761,7 +764,7 @@ namespace GRAPH_IPSR {
 	
 			nlohmann::json log_j;
 			log_j["config"] = get_config();
-			log_j["cal_res"] = caculate_res(edge);
+			log_j["cal_res"] = this->caculate_res(edge);
 			log_j["consistency"] = j;	
 			std::ofstream out(log_path);
 			out << log_j.dump(4);
@@ -775,7 +778,7 @@ namespace GRAPH_IPSR {
 	 * @tparam REAL 
 	 * @tparam DIM 
 	 */
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class consistency_calculator_plus:public edge_weight_calculator<REAL,DIM>{
 		MaxAB_Mesh<REAL, DIM> _oc;
 		UnorderedPairMap<std::pair<MESH,MESH>> _mesh_graph; // 用于存储每个边对应的ori_mesh和inv_end_mesh. 由于不考虑overlap，所以边是无序的
@@ -796,7 +799,7 @@ namespace GRAPH_IPSR {
 
 		// 根据两个weight给出置信度
 		REAL _weight2conf(std::pair<REAL, REAL> weight) {
-			return max(weight.first, weight.second) / (weight.first + weight.second);
+			return std::max(weight.first, weight.second) / (weight.first + weight.second);
 		}
 
 		REAL _normalize_weight(REAL weight) {
@@ -872,8 +875,9 @@ namespace GRAPH_IPSR {
 					lzd_tools::revert_op(ori_b);
 					inv_end_op.insert(inv_end_op.end(), ori_b.begin(), ori_b.end());
 					
-					MESH ori_mesh = clean_mesh(factory->get_mesh_from_points_normals(ori_op), ori_op, std::vector<REAL>());
-					MESH inv_end_mesh = clean_mesh(factory->get_mesh_from_points_normals(inv_end_op), ori_op, std::vector<REAL>());
+					std::vector<REAL> _cm_pmdist_a, _cm_pmdist_b;
+					MESH ori_mesh = clean_mesh(factory->get_mesh_from_points_normals(ori_op), ori_op, _cm_pmdist_a);
+					MESH inv_end_mesh = clean_mesh(factory->get_mesh_from_points_normals(inv_end_op), ori_op, _cm_pmdist_b);
 					_mesh_graph[e] = std::pair<MESH, MESH>(ori_mesh, inv_end_mesh);
 
 										
@@ -919,8 +923,8 @@ namespace GRAPH_IPSR {
 					std::pair<REAL, REAL> weight;
 					_cal_edge_weight(all_edges[i][j], weight);
 					_weight[std::make_pair(s, e)] = weight;
-					_max_weight = max(_max_weight, max(weight.first, weight.second));
-					_min_weight = min(_min_weight, min(weight.first, weight.second));
+					_max_weight = std::max(_max_weight, std::max(weight.first, weight.second));
+					_min_weight = std::min(_min_weight, std::min(weight.first, weight.second));
 					++finished;
 				}
 			}
@@ -959,7 +963,7 @@ namespace GRAPH_IPSR {
 
 			nlohmann::json log_j;
 			log_j["config"] = get_config();
-			log_j["cal_res"] = caculate_res(edge);
+			log_j["cal_res"] = this->caculate_res(edge);
 			log_j["consistency"] = j;
 			std::ofstream out(log_path);
 			out << log_j.dump(4);
@@ -969,7 +973,7 @@ namespace GRAPH_IPSR {
 
 
 
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class point_consistency_calculator:public edge_weight_calculator<REAL,DIM>{
 		PointOrientationConsistency<REAL,DIM> _poc;
 		
@@ -1014,7 +1018,7 @@ namespace GRAPH_IPSR {
 
 		// 根据两个weight给出置信度
 		REAL _weight2conf(std::pair<REAL, REAL> weight) {
-			return max(weight.first, weight.second) / (weight.first + weight.second);
+			return std::max(weight.first, weight.second) / (weight.first + weight.second);
 		}
 
 	public:
@@ -1046,8 +1050,8 @@ namespace GRAPH_IPSR {
 				for (int j = 0; j < all_edges[i].size(); j++) {
 					int s = _vertex2idx[all_edges[i][j]->start], e = _vertex2idx[all_edges[i][j]->end];
 					_cal_edge_weight(all_edges[i][j], _weight[s][e]);
-					_max_weight = max(_max_weight, max(_weight[s][e].first, _weight[s][e].second));
-					_min_weight = min(_min_weight, min(_weight[s][e].first, _weight[s][e].second));
+					_max_weight = std::max(_max_weight, std::max(_weight[s][e].first, _weight[s][e].second));
+					_min_weight = std::min(_min_weight, std::min(_weight[s][e].first, _weight[s][e].second));
 					++finished;
 					printf("\r%d/%d", finished.get(), total_edges);
 				}
@@ -1093,7 +1097,7 @@ namespace GRAPH_IPSR {
 			j["inv_avg_consistency"] = inv_consistency;
 			nlohmann::json log_j;
 			log_j["config"] = get_config();
-			log_j["cal_res"] = caculate_res(edge);
+			log_j["cal_res"] = this->caculate_res(edge);
 			log_j["consistency"] = j;	
 			std::ofstream out(log_path);
 			out << log_j.dump(4);
@@ -1101,7 +1105,7 @@ namespace GRAPH_IPSR {
 		}
 	};
 
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class dipole_calculator:public edge_weight_calculator<REAL,DIM>{
 	private:
 		REAL _eps;
@@ -1167,7 +1171,7 @@ namespace GRAPH_IPSR {
 				for (int j = 0; j < all_edges[i].size(); j++) {
 					int s = _vertex2idx[all_edges[i][j]->start], e = _vertex2idx[all_edges[i][j]->end];
 					_cal_edge_weight(all_edges[i][j], _weight[s][e]);
-					_max_weight = max(_max_weight, max(_weight[s][e].first, _weight[s][e].second));
+					_max_weight = std::max(_max_weight, std::max(_weight[s][e].first, _weight[s][e].second));
 					++finished;
 					printf("\r%d/%d", finished.get(), total_edges);
 				}
@@ -1188,7 +1192,7 @@ namespace GRAPH_IPSR {
 			assert(edge->end->is_inved() == false);
 			std::pair<REAL, REAL> unnormalized_weight = _weight[_vertex2idx[edge->start]][_vertex2idx[edge->end]];
 			weight = std::pair<REAL, REAL>(_normalize_weight(unnormalized_weight.first), _normalize_weight(unnormalized_weight.second));
-			conf = max(weight.first, weight.second) / (weight.first + weight.second);
+			conf = std::max(weight.first, weight.second) / (weight.first + weight.second);
 		}
 
 		void visualization(const EDGE_P<REAL,DIM> edge,std::string floder){
@@ -1213,7 +1217,7 @@ namespace GRAPH_IPSR {
 	 * 注意使用的是排名比例，而不是conf的值,这样可以保证不同的conf计算方法可以比较;
 	 * 但还是尽量保证conf、weight的值域接近，否则后续计算weight_sum时可能会出错
 	 */
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class CoCalculator:public edge_weight_calculator<REAL,DIM>{
 		edge_weight_calculator<REAL,DIM>* _primary_calculator;
 		edge_weight_calculator<REAL,DIM>* _aid_calculator;
@@ -1297,7 +1301,7 @@ namespace GRAPH_IPSR {
 			_aid_calculator->visualization(edge,floder + "/aid");
 			nlohmann::json j;
 			j["config"] = get_config();
-			j["cal_res"] = caculate_res(edge);
+			j["cal_res"] = this->caculate_res(edge);
 
 			std::pair<REAL,REAL> primary_weight,aid_weight;
 			REAL p_conf = 0,a_conf = 0;
@@ -1318,7 +1322,7 @@ namespace GRAPH_IPSR {
 
 	};
 
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	edge_weight_calculator<REAL,DIM>* get_edge_caculator_from_json(nlohmann::json config_j,IPSR_Factory<REAL, DIM>* factory, const linked_graph<REAL, DIM>* lg){
 		std::string name = config_j["name"];
 		if(name == "overlap_diff_calculator"){
@@ -1361,7 +1365,7 @@ namespace GRAPH_IPSR {
 	}
 
 	// 使用邻接链表存储的图
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class linked_graph {
 		std::map<VERTEX_P<REAL, DIM>, int> _vertex2idx; //_vertex2idx[_nodes[i]] = i。有时候有node指针，但不知道其在_nodes中的索引
 		std::map<std::pair<int, int>, EDGE_P<REAL, DIM>> _idx2edge;
@@ -1444,7 +1448,7 @@ namespace GRAPH_IPSR {
 			}
 
 			// 随机排序
-			std::random_shuffle(sorted_edges.begin(),sorted_edges.end());
+			std::shuffle(sorted_edges.begin(), sorted_edges.end(), std::mt19937(std::random_device{}()));
 
 			// 并查集
 			std::vector<int> parent(nodes.size());
@@ -1638,7 +1642,7 @@ namespace GRAPH_IPSR {
 			std::mutex *mtx = new std::mutex[_nodes.size()];
 			lzd_tools::thread_safe_int finished(0);
 			int total_count = iter * _nodes.size();
-			printf("start parallel update. %d nodes has total_iter%d\n",_(int)nodes.size(),total_count);
+			printf("start parallel update. %d nodes has total_iter%d\n",(int)_nodes.size(),total_count);
 #pragma omp parallel for
 			for(int i = 0;i<iter;i++){
 				for (int j = 0; j < _nodes.size(); j++) {
@@ -1976,7 +1980,7 @@ namespace GRAPH_IPSR {
 				}
 			}
 			std::string path = _nodes[0]->_handle->get_out_put_base(adpath) + adname + "graph_edge_" + measurement + ".ply";
-			lzd_tools::InFiniteMap<REAL>* colormap = new lzd_tools::GradientMapper<REAL>(edge_metric);
+			lzd_tools::InFiniteMap<double>* colormap = new lzd_tools::GradientMapper<REAL>(edge_metric);
 			lzd_tools::mesh2ply(all_edges,path,XForm<REAL,DIM+1>().Identity(),colormap);
 		}
 
@@ -1997,9 +2001,9 @@ namespace GRAPH_IPSR {
 			get_all_op(self_op);
 			assert(gt.size() == res_op.size());
 			// self_op's kdtree
-			vector<kdt::KDTreePoint> vertices;
+			std::vector<kdt::KDTreePoint> vertices;
 			for (int i = 0; i < self_op.size(); i++) {
-				array<REAL, 3> p = { self_op[i].first[0],self_op[i].first[1],self_op[i].first[2] };
+				std::array<REAL, 3> p = { self_op[i].first[0],self_op[i].first[1],self_op[i].first[2] };
 				vertices.push_back(kdt::KDTreePoint(p));
 			}
 			kdt::KDTree<kdt::KDTreePoint> kdtree(vertices);
@@ -2007,7 +2011,7 @@ namespace GRAPH_IPSR {
 			double total_dist = 0;
 #pragma omp parallel for
 			for (int i = 0; i < gt.size(); i++) {
-				array<REAL, 3> p = { gt[i].first[0],gt[i].first[1],gt[i].first[2] };
+				std::array<REAL, 3> p = { gt[i].first[0],gt[i].first[1],gt[i].first[2] };
 				auto res = kdtree.knnSearch(p, 1);
 				res_op[i].first = gt[i].first;
 				res_op[i].second = self_op[res[0]].second;
@@ -2069,7 +2073,7 @@ namespace GRAPH_IPSR {
 					
 				}
 			}
-			cout << "save all edge done!\n";
+			std::cout << "save all edge done!\n";
 		}
 		/**
 		 * @brief 
@@ -2094,7 +2098,7 @@ namespace GRAPH_IPSR {
 					}
 				}
 			}
-			cout << "save wrong edge done!\n";
+			std::cout << "save wrong edge done!\n";
 		}
 		
 		void save_optim(std::string adpath = "/graph_ipsr/", std::string adname = "optimflip") {
@@ -2134,7 +2138,7 @@ namespace GRAPH_IPSR {
 					double d = Distance(op[j].first, _nodes[i]->_op[j].first);
 					_nodes[i]->_op[j].second = op[j].second;
 					total_count += 1;
-					max_dist = max(d, max_dist);
+					max_dist = std::max(d, max_dist);
 					total_dist += d;
 				}
 				_nodes[i]->iupdate2op();
@@ -2185,7 +2189,7 @@ namespace GRAPH_IPSR {
 
 /******************************************顶点的组织********************************************************/
 	// 可能考虑将顶点用简单的立方体，或者octree来组织。这部分完全面向顶点。但每个组织方式，需要提供一个转为图的接口。
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class NodeAllocator {
 	public:
 		virtual linked_graph<REAL, DIM> op_orchestration(
@@ -2199,7 +2203,7 @@ namespace GRAPH_IPSR {
 	};
 
 	// 将立方体分割成一个立方体网格,每个小格为一个正方体
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class simple_cube : public NodeAllocator<REAL,DIM>{
 		typedef std::vector<int> CUBE_COORDINATE;
 		// 立方体网格中的一个立方体的边界(矩形边界)
@@ -2332,7 +2336,7 @@ namespace GRAPH_IPSR {
 					for(int k = 0;k<z_num;k++){
 						_grid_op[i][j][k] = POINTS_NORMALS();
 						_grid_bboxs[i][j][k] = rectangle_bbox();
-						unsigned int tdim[3] = { i,j,k };
+						unsigned int tdim[3] = { (unsigned int)i,(unsigned int)j,(unsigned int)k };
 						for(int l = 0;l<DIM;l++){
 							_grid_bboxs[i][j][k].boundaries[l].first = _op_bbox.boundaries[l].first + tdim[l] * _stride;
 							_grid_bboxs[i][j][k].boundaries[l].second = _op_bbox.boundaries[l].first + (tdim[l] + 1) * _stride;
@@ -2551,14 +2555,14 @@ public:
 
 }; 
 
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class SeedGrowing:public NodeAllocator<REAL, DIM> {
 		using pcl_op_cloud = pcl::PointCloud<pcl::PointNormal>;
 		using pcl_kdtree = pcl::search::KdTree<pcl::PointNormal>;
 		
 		typedef struct SinglePoint {
 			int id;
-			//std::pair<Point<REAL, DIM>, Normal<REAL, DIM>> op;
+			//std::pair<Point<REAL, DIM>, Normal<REAL, (int)DIM>> op;
 			SinglePoint(int id) :id(id) {
 				//op = _points_normals[id];
 			}
@@ -2790,7 +2794,7 @@ public:
 					std::vector<int> idx;
 					std::vector<float> distance;
 					global_tree->nearestKSearch(cloud->points[i], _k, idx, distance);
-					for (int j = 0; j < min((int)idx.size(),_k); j++) {
+					for (int j = 0; j < std::min((int)idx.size(),_k); j++) {
 						if (i == idx[j])continue;
 						if (distance[j] >= _radius)break;
 						if (edges[i].size() >= k)break;
@@ -3012,7 +3016,7 @@ public:
 		}
 
 		void _adaptive_grid_selection(int point_per_grid = 2000){
-			int k = _points_normals.size() / max(1,point_per_grid);
+			int k = _points_normals.size() / std::max(1,point_per_grid);
 			_k_grid_selection(k);
 		}
 
@@ -3208,7 +3212,7 @@ public:
 					else cluster_ad_graph[i][j] = -1;
 				}
 			}
-			_edge_betweeness = aux_arg::_boost_cal_edge_betweenness(cluster_ad_graph);
+			// _edge_betweeness = aux_arg::_boost_cal_edge_betweenness(cluster_ad_graph);  // impl commented out in AuxAlg.h
 			// normalize _edge_betweeness
 			REAL max_edge_betweeness = 0;
 			for (int i = 0; i < _edge_betweeness.size(); i++) {
@@ -3227,7 +3231,7 @@ public:
 				}
 			}			
 			
-			_node_betweeness = aux_arg::_boost_cal_node_betweeness(cluster_ad_graph);
+			// _node_betweeness = aux_arg::_boost_cal_node_betweeness(cluster_ad_graph);
 			REAL max_node_betweeness = 0;
 			for (int i = 0; i < _node_betweeness.size(); i++) {
 				assert(_node_betweeness[i] >= 0);
@@ -3684,7 +3688,7 @@ public:
 	 * @brief 
 	 * 根据label分配点到簇 再根据簇生成图
 	 */
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class AllocateByLabels:public NodeAllocator<REAL,DIM> {
 		private:
 			std::vector<int> _label;
@@ -3712,7 +3716,7 @@ public:
 			}		
 	};
 
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	NodeAllocator<REAL,DIM>* createAllocatorByJson(nlohmann::json j, POINTS_NORMALS points_normals){
 		std::string name = j["name"];
 		if(name == "AllocateByLabels"){
@@ -3749,19 +3753,17 @@ public:
 
 	}
 
-	typedef double REAL;
-	const unsigned int DIM = 3U;
-	int simple_cube<REAL, DIM>::_op_num_treshold = 10;
-	REAL simple_cube<REAL, DIM>::rectangle_bbox::INF = 1e9;
-	REAL simple_cube<REAL, DIM>::simple_cube_grid::overlap_rate = 0.25;
-	int graph_edge<REAL, DIM>::_overlap_treshold = 0;
+	template<> int simple_cube<double, 3>::_op_num_treshold = 10;
+	template<> double simple_cube<double, 3>::rectangle_bbox::INF = 1e9;
+	template<> double simple_cube<double, 3>::simple_cube_grid::overlap_rate = 0.25;
+	template<> int graph_edge<double, 3>::_overlap_treshold = 0;
 	nlohmann::json static_conf = nlohmann::json();
-	nlohmann::json SeedGrowing<REAL, DIM>::seedgrowing_config_s = nlohmann::json();
+	template<> nlohmann::json SeedGrowing<double, 3>::seedgrowing_config_s = nlohmann::json();
 
 	static void assign_static_conf(){
 		static_conf = ConfigManager::get_config_in_config_floder("graph_ipsr.json")["static_conf"];
-		SeedGrowing<REAL, DIM>::seedgrowing_config_s = static_conf["SeedGrowing"];
-		graph_edge<REAL, DIM>::_overlap_treshold = static_conf["graph_edge"]["overlap_treshold"];
+		SeedGrowing<double, 3>::seedgrowing_config_s = static_conf["SeedGrowing"];
+		graph_edge<double, 3>::_overlap_treshold = static_conf["graph_edge"]["overlap_treshold"];
 	}
 
 }//namespace

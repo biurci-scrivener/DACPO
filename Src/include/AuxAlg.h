@@ -28,8 +28,11 @@
 
 
 namespace aux_arg {
+	template <typename REAL, unsigned int DIM>
+	pcl::PointCloud<pcl::PointXYZ>::Ptr pn2pclxyz(const POINTS_NORMALS& pn);
+
 	// 存储一个kdtree和_label。输入一个点是，返回其在空间中的领域内的点的label
-	template<typename REAL, int DIM>
+	template<typename REAL, unsigned int DIM>
 	class LabelGetter {
 
         // 存储一个kd树
@@ -107,7 +110,7 @@ namespace aux_arg {
 	using VV = std::vector<std::vector<REAL>>;
 
 	// 将POINT_NORMALS复制到一个pcl::PointCloud<pcl::PointXYZ>::Ptr中
-	template <typename REAL, int DIM>
+	template <typename REAL, unsigned int DIM>
 	pcl::PointCloud<pcl::PointXYZ>::Ptr pn2pclxyz(const POINTS_NORMALS& pn) {
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		cloud->resize(pn.size());
@@ -127,7 +130,7 @@ namespace aux_arg {
 	 * @param radius 限制最大可连接距离
 	 * @param K 限制最大可连接点数
 	 */
-	template <typename REAL, int DIM>
+	template <typename REAL, unsigned int DIM>
 	VV<REAL> pointcloud2graph(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, 
 	REAL radius = 0.01,int K = 10) {
 		VV<REAL> graph;
@@ -148,7 +151,7 @@ namespace aux_arg {
 		return graph;
 	}
 
-	template <typename REAL, int DIM>
+	template <typename REAL, unsigned int DIM>
 	int __BFSgrowing(const VV<REAL>& graph, std::vector<int>& arrived, float rate = 0.1) {
 		assert(graph.size() > 0);
 		assert(graph.size() == arrived.size());
@@ -195,7 +198,7 @@ namespace aux_arg {
 	 * @param arrived 0表示未到达，1表示已到达，-1表示不可达
 	 * @param rate 退出条件，已到达/（总点数-不可达点数）>= rate
 	 */
-	template <typename REAL, int DIM>
+	template <typename REAL, unsigned int DIM>
 	int BFS_growing(const POINTS_NORMALS& pn, std::vector<int>& arrived, float rate = 0.1) {
 		VV<REAL> graph = pointcloud2graph<REAL, DIM>(pn2pclxyz<REAL, DIM>(pn));
 		return __BFSgrowing<REAL, DIM>(graph, arrived, rate);

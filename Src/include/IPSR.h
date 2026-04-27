@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <algorithm>
+#include <queue>
 #include "pcl_api.h"
 #include "o3d_api.h"
 #include "kdtree.h"
@@ -61,7 +62,7 @@ typedef int (*UpdatePlan)(Period&);
 
 UpdatePlan get_update_plan_by_name(std::string name);
 
-//template<typename REAL, int DIM>
+//template<typename REAL, unsigned int DIM>
 //int pcl_fix(POINTS_NORMALS& points_normals, POINTS_NORMALS& pcl_normals){
 //    std::vector<int> flag(pcl_normals.size(),0);
 //    if(points_normals.size() != pcl_normals.size()){
@@ -89,7 +90,7 @@ lzd_tools::FiniteMap get_mincut_colormap();
 /****************************************
  * 面向points_normals的ipsr
  * ******************************************/
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class ipsr_handle {
     nlohmann::json _config_j;
     // nlohmann::json _log_j;
@@ -117,7 +118,7 @@ public:
     REAL old_avg_max_diff;
     XForm<REAL, DIM + 1> ixform; //_points_normals * ixform = _ori_points_normals在原空间中的采样
     MESH mesh;
-    std::vector<Normal<REAL, DIM>> avg_normal;// 每个点与所有选择了该点的三角面片的法向量的均值（需要用来计算方差）
+    std::vector<Normal<REAL, (int)DIM>> avg_normal;// 每个点与所有选择了该点的三角面片的法向量的均值（需要用来计算方差）
     std::vector<float> i_nearestSample_var;// 每个点与所有选择了该点的三角面片的法向量的方差
     std::vector<float> _points_normals_diff; // 每个点的法向量的更新幅度。
     std::vector<double> _weight_samples;// psr采样阶段生成的
@@ -225,11 +226,11 @@ public:
         this->_gt_points_normals = ipsr._gt_points_normals;
 
 
-        vector<kdt::KDTreePoint> vertices;
+        std::vector<kdt::KDTreePoint> vertices;
         vertices.reserve(this->_points_normals.size());
         for (size_t i = 0; i < this->_points_normals.size(); ++i)
         {
-            array<REAL, 3> _p_{this->_points_normals[i].first[0], this->_points_normals[i].first[1], this->_points_normals[i].first[2]};
+            std::array<REAL, 3> _p_{this->_points_normals[i].first[0], this->_points_normals[i].first[1], this->_points_normals[i].first[2]};
             vertices.push_back(kdt::KDTreePoint(_p_));
         }
         input_point_tree.build(vertices);
@@ -275,7 +276,7 @@ public:
         vertices.reserve(this->_points_normals.size());
         for (size_t i = 0; i < this->_points_normals.size(); ++i)
         {
-            array<REAL, 3> _p_{ this->_points_normals[i].first[0], this->_points_normals[i].first[1], this->_points_normals[i].first[2] };
+            std::array<REAL, 3> _p_{ this->_points_normals[i].first[0], this->_points_normals[i].first[1], this->_points_normals[i].first[2] };
             vertices.push_back(kdt::KDTreePoint(_p_));
         }
         input_point_tree.build(vertices);
@@ -298,7 +299,7 @@ public:
 
         for (auto f:_filters)
         {
-            _out<<f->get_config()<<endl;
+            _out<<f->get_config()<<std::endl;
         }
         return 0;
     }
@@ -332,7 +333,7 @@ public:
     nlohmann::json get_log(){
         nlohmann::json tlog;
         for(int i = 0;i<avg_max_var_log.size();i++){
-            tlog[to_string(i)] = to_string(avg_max_var_log[i]);
+            tlog[std::to_string(i)] = std::to_string(avg_max_var_log[i]);
         }
         log_j["avg_max_var_log"] = tlog;
         log_j["behavior"] = _out.str();
@@ -528,6 +529,9 @@ public:
         _out << "\n\n--------------------------------------------------";
         _out << "iter::epoch: " << _epoch;
         _out << " start--------------------------------------------------\n";
+        if (_epoch < _max_iters) {
+            std::cout << "[iter " << (_epoch + 1) << "/" << _max_iters << "] starting" << std::endl;
+        }
 
         /**************************update_plan************************************/
         if (_epoch < 0) {
@@ -560,26 +564,26 @@ public:
         lzd_tools::AcumutableTimer update_normal_t("ipsr_handle::iter_update_normal");
         /**************************recompute the face normals********************************/
         // store the tri_face_normals of each point corresponding to the nearestSamples
-        std::vector<Normal<REAL, DIM>> tri_face_normals(mesh.second.size());
+        std::vector<Normal<REAL, (int)DIM>> tri_face_normals(mesh.second.size());
         // nearestSamples[i][j] implies the index of the j-th nearest sample point of the i-th face center in mesh.second 
         nearestSamples.clear();
         nearestSamples.resize(mesh.second.size());
 #pragma omp parallel for
         for (int i = 0; i < (int)mesh.second.size(); i++) {
             if (mesh.second[i].size() != 3) {
-                _out << "Error: mesh.second[i].size() != 3" << endl;
+                _out << "Error: mesh.second[i].size() != 3" << std::endl;
             }
             Point<REAL, DIM> c = mesh.first[mesh.second[i][0]] + mesh.first[mesh.second[i][1]] + mesh.first[mesh.second[i][2]];
             c /= 3;
-            array<REAL, 3> a{c[0], c[1], c[2]};
+            std::array<REAL, 3> a{c[0], c[1], c[2]};
             tri_face_normals[i] = Point<REAL, DIM>::CrossProduct(mesh.first[mesh.second[i][1]] - mesh.first[mesh.second[i][0]], mesh.first[mesh.second[i][2]] - mesh.first[mesh.second[i][0]]);
             nearestSamples[i] = input_point_tree.knnSearch(kdt::KDTreePoint(a), _k_neighbors);
         }
 
-        Normal<REAL, DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
+        Normal<REAL, (int)DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
         // **temporary store** the tri_face_normals of each point in point_normals for the following for-loop
         // projective_normals[i] store the normal of the i-th point in point_normals after indirect mapping or direct mapping
-        std::vector<Normal<REAL, DIM>> projective_normals(_points_normals.size(), zero_normal);
+        std::vector<Normal<REAL, (int)DIM>> projective_normals(_points_normals.size(), zero_normal);
 
 
         // 不论是直接映射还是间接映射,都需要在surface上采样若干个面片,并根据面片的法向量计算点的法向量。记录每个点采样的面索引
@@ -590,13 +594,13 @@ public:
         ******************************************/
         if (_update_strategy == INDIRECT_MAPPING) {
             sample_tri_idx = inverse_map<REAL, DIM>(nearestSamples, _points_normals.size());
-            _out << "iter::indirectly mapping..." << endl;
+            _out << "iter::indirectly mapping..." << std::endl;
         }
         /****************************************
          * direct mapping sampling
          * ******************************************/
         else if (_update_strategy == DIRECT_MAPPING) {
-            _out << "iter::directly mapping..." << endl;
+            _out << "iter::directly mapping..." << std::endl;
             // rebuild the kdtree of the tri_face_normals in every iter. that's the main reason why direct mapping is slower than indirect mapping
             kdt::KDTree<kdt::KDTreePoint> tri_center_tree;
             std::vector<kdt::KDTreePoint> tri_centers;
@@ -606,7 +610,7 @@ public:
             for (int i = 0; i < mesh.second.size(); i++) {
                 Point<REAL, DIM> c = mesh.first[mesh.second[i][0]] + mesh.first[mesh.second[i][1]] + mesh.first[mesh.second[i][2]];
                 c /= 3;
-                array<REAL, 3> a{c[0], c[1], c[2]};
+                std::array<REAL, 3> a{c[0], c[1], c[2]};
                 tri_centers.push_back(kdt::KDTreePoint(a));
             }
             tri_center_tree.build(tri_centers);
@@ -614,7 +618,7 @@ public:
 #pragma omp parallel for
             // 用knn找出每个点的采样面片
             for (int i = 0; i < (int)_points_normals.size(); i++) {
-                array<REAL, 3> a{_points_normals[i].first[0], _points_normals[i].first[1], _points_normals[i].first[2]};
+                std::array<REAL, 3> a{_points_normals[i].first[0], _points_normals[i].first[1], _points_normals[i].first[2]};
                 auto idxs = tri_center_tree.knnSearch(a, _k_neighbors);
                 sample_tri_idx[i].resize(idxs.size());
                 for (int j = 0; j < idxs.size(); j++) {
@@ -623,7 +627,7 @@ public:
             }
         }
         else {
-            _out << "iter::Error: unknown update strategy" << endl;
+            _out << "iter::Error: unknown update strategy" << std::endl;
             return -1;
         }
 
@@ -664,7 +668,9 @@ public:
         _out<<("not_update_count: %d\n", not_update_count);
 
         avg_max_var_log.push_back(avg_max_diff);
-        _out << "iter::avg_max_diff: " << avg_max_diff << endl;
+        _out << "iter::avg_max_diff: " << avg_max_diff << std::endl;
+        std::cout << "[iter " << (_epoch + 1) << "/" << _max_iters << "] avg_max_diff=" << avg_max_diff
+                  << (avg_max_diff < 0.1 ? "  (converged)" : "") << std::endl;
 
         // 计算每个点的sample_var
         if (!ConfigManager::get_common_config()["no_save"]) {
@@ -681,11 +687,11 @@ public:
             }
             avg_var /= heap_size;
             sample_var_log.push_back(avg_var);
-            _out << "iter::avg_max_samplevar: " << avg_var << endl;
+            _out << "iter::avg_max_samplevar: " << avg_var << std::endl;
             cal_and_log_matric(heap_size);
-            _out << "iter::avg_max_pmdist: " << avg_pmdist_log[avg_pmdist_log.size() - 1] << endl;
-            _out << "iter::mesh_size: " << mesh_size_log[mesh_size_log.size() - 1] << endl;
-            _out << "iter::avg_loss: " << loss_log[loss_log.size() - 1] << endl;
+            _out << "iter::avg_max_pmdist: " << avg_pmdist_log[avg_pmdist_log.size() - 1] << std::endl;
+            _out << "iter::mesh_size: " << mesh_size_log[mesh_size_log.size() - 1] << std::endl;
+            _out << "iter::avg_loss: " << loss_log[loss_log.size() - 1] << std::endl;
         }
         
 
@@ -712,7 +718,7 @@ public:
             int zero_c = cal_i_avg_var(sample_tri_idx, tri_face_normals);
             _epoch = _max_iters-1;
             // printf("%d points haven't been selected by any face(%d totally)\n", zero_c, _points_normals.size());
-            _out << "iter::" << zero_c << " points haven't been selected by any face(" << _points_normals.size() << " totally)" << endl;
+            _out << "iter::" << zero_c << " points haven't been selected by any face(" << _points_normals.size() << " totally)" << std::endl;
         }  
         return _epoch;
     }
@@ -813,7 +819,7 @@ public:
     //    auto center_pivot = _points_normals[center].first - _points_normals[ring_idx[0]].first;
     //    for (int i = 0; i < ring_idx.size(); i++) {
     //        auto center_pi = _points_normals[center].first - _points_normals[ring_idx[i]].first;
-    //        REAL angle = calculate_angle(Normal<REAL, DIM>(center_pi), Normal<REAL, DIM>(center_pivot));
+    //        REAL angle = calculate_angle(Normal<REAL, (int)DIM>(center_pi), Normal<REAL, (int)DIM>(center_pivot));
     //        ring_idx_angle.push_back(std::make_pair(ring_idx[i], angle));
     //    }
     //    std::sort(ring_idx_angle.begin(), ring_idx_angle.end(), [](std::pair<int, REAL> a, std::pair<int, REAL> b) {return a.second < b.second; });
@@ -978,9 +984,9 @@ public:
     /// @param mapper 采样的索引
     /// @param sample_normals 采样点的法向量 
     /// @return 返回无法映射的点的个数 
-    int cal_i_avg_var(const MULTI_MAP mapper, const std::vector<Normal<REAL, DIM>>& sample_normals) {
+    int cal_i_avg_var(const MULTI_MAP mapper, const std::vector<Normal<REAL, (int)DIM>>& sample_normals) {
         lzd_tools::AcumutableTimer clock("ipsr_handle::cal_i_avg_var");
-        Normal<REAL, DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
+        Normal<REAL, (int)DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
         int zero_c = 0;
         i_nearestSample_var.resize(_points_normals.size());
         avg_normal.resize(_points_normals.size());
@@ -1005,7 +1011,7 @@ public:
             for (size_t j = 0; j < mapper[i].size(); ++j)
             {
                 // calculate the angle between the normal and the average normal as the variance
-                REAL diff = abs(calculate_angle(Normal<REAL, DIM>(sample_normals[mapper[i][j]]), avg_normal[i]));
+                REAL diff = abs(calculate_angle(Normal<REAL, (int)DIM>(sample_normals[mapper[i][j]]), avg_normal[i]));
                 variance += diff;
             }
             if (mapper[i].size() != 0) {
@@ -1021,10 +1027,10 @@ public:
 
     // 计算每个点法向量的变化量
     // @return
-    float cal_points_normals_diff(const std::vector<Normal<REAL, DIM>>& new_normals, const POINTS_NORMALS& old_op, std::vector<float>& points_normals_diff, int K) {
+    float cal_points_normals_diff(const std::vector<Normal<REAL, (int)DIM>>& new_normals, const POINTS_NORMALS& old_op, std::vector<float>& points_normals_diff, int K) {
         assert(new_normals.size() == old_op.size());
         points_normals_diff.resize(new_normals.size());
-        Normal<REAL, DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
+        Normal<REAL, (int)DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
 #pragma omp parallel for
         for (int i = 0; i < new_normals.size(); i++) {
             // 由于ipsr在遇到无法映射的点时,会将其法向量保留，因此该点处的diff为0
@@ -1131,10 +1137,10 @@ public:
     std::string get_resname() {
         std::string depth = _cmd[find_arg(this->_cmd, "--depth") + 1];
         std::string point_weight = _cmd[find_arg(this->_cmd, "--pointWeight") + 1];
-        std::string filename = "it_" + to_string(_max_iters);
+        std::string filename = "it_" + std::to_string(_max_iters);
         filename += "_dp_" + depth;
-        filename += "_nb_" + to_string(_k_neighbors);
-        filename += "_sd_" + to_string(_seed);
+        filename += "_nb_" + std::to_string(_k_neighbors);
+        filename += "_sd_" + std::to_string(_seed);
         filename += "_pt_" + point_weight;
         //std::string res_name = filename;
         return filename;
@@ -1224,7 +1230,7 @@ public:
 
         // 打印log
         // 创建log文件夹
-        string log_path = output_path + "iter_logs/";
+        std::string log_path = output_path + "iter_logs/";
         rmkdir(log_path);
         _save_log(log_path + get_resname() + "_");
         return 0;
@@ -1313,7 +1319,7 @@ private:
     }
 };
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 void _select_tri(const MESH& mesh, const POINTS_NORMALS& op,
                 std::vector<REAL>& pmdist,std::vector<int>& if_select,
                 int k = 20)
@@ -1331,7 +1337,7 @@ void _select_tri(const MESH& mesh, const POINTS_NORMALS& op,
     {
         auto v = (mesh.first[mesh.second[i][0]] + mesh.first[mesh.second[i][1]] + mesh.first[mesh.second[i][2]]) / 3;
         center_points[i] = v;
-        array<REAL, 3> _p_{v[0], v[1], v[2]};
+        std::array<REAL, 3> _p_{v[0], v[1], v[2]};
         vertices[i] = (kdt::KDTreePoint(_p_));
     }
     kdtree.build(vertices);
@@ -1357,7 +1363,7 @@ void _select_tri(const MESH& mesh, const POINTS_NORMALS& op,
  * @param k knn的k值
  * @return 提取后的MESH 
  */
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 MESH clean_mesh(const MESH& mesh, const POINTS_NORMALS& op,std::vector<REAL>& pmdist,int k = 20){
     if (mesh.first.size() == 0) {
         printf("clean_mesh::WARNING mesh.first.size()==%d, op.size()==%d", mesh.first.size(), op.size());
@@ -1384,7 +1390,7 @@ MESH clean_mesh(const MESH& mesh, const POINTS_NORMALS& op,std::vector<REAL>& pm
  * 我们需要clean，是因为Neumann边界条件下产生的飞边会导致法向量出错。
  * 至少在迭代期间，这个clean过程不应该产生更多的边界点
  */
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 MESH shrink_boundary(const MESH& mesh, const POINTS_NORMALS& op,std::vector<REAL>& pmdist,int k = 20){
     unsigned int n = mesh.first.size();
     unsigned int m = mesh.second.size();
@@ -1470,7 +1476,7 @@ MESH shrink_boundary(const MESH& mesh, const POINTS_NORMALS& op,std::vector<REAL
 
 
 // 使用指定次计划外的更新方式。如果此时ipsr已经接近end（_epoch>_max_iters-fix_times），那么会导致最后实际的迭代次数大于_max_iter;
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 int fix_update(IPSR_HANDLE_P p_ipsr, int (*fix_plan)(Period& p) = diri_dir_ipsr, int fix_times = 3) {
     //printf("fix_update::记得该回去\n");
     //return 0;

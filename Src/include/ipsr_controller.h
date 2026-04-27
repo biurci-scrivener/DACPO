@@ -6,14 +6,14 @@
 /**
  * @brief 判断ipsr是否处于某种状态
  */
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class BasicIPSRFilter {
 public:
     virtual bool check(const IPSR_HANDLE_P handle) = 0;
     virtual nlohmann::json get_config() = 0;
 };
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class ModFilter : public BasicIPSRFilter<REAL,DIM> {
     int mod;
 public:
@@ -34,7 +34,7 @@ public:
     }
 };
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class ShockingIPSRFilter : public BasicIPSRFilter<REAL,DIM> {
     int window_size;//窗口大小 查看最近window_size个epoch的信息    
 public:
@@ -71,7 +71,7 @@ public:
     }
 };
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class SufficientEpochFilter : public BasicIPSRFilter<REAL, DIM> {
     int _at_least_epoch_count;
 
@@ -92,7 +92,7 @@ public:
     }
 };
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class ForbidFilter : public BasicIPSRFilter<REAL, DIM> {
 public:
     bool check(const IPSR_HANDLE_P handle) {
@@ -107,7 +107,7 @@ public:
 };
 
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 bool filter_ipsr(const IPSR_HANDLE_P handle,const std::vector<BasicIPSRFilter<REAL,DIM>*> filters) {
     for (auto filter : filters) {
         if (!filter->check(handle)) {
@@ -119,7 +119,7 @@ bool filter_ipsr(const IPSR_HANDLE_P handle,const std::vector<BasicIPSRFilter<RE
 
 
 /***********************************ipsr vistor***********************************************/
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class IpsrController{
 public:
     virtual int iter(IPSR_HANDLE_P _handle) = 0;
@@ -131,7 +131,7 @@ public:
  * @brief 
  * 初步规划: 负责ipsr_hp的reinit、mincut等行为的调用
  */
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class SingleIpsrController : public IpsrController<REAL,DIM> {
     //std::vector<BasicIPSRFilter<REAL,DIM>*> _reinit_filters;
     //std::vector<BasicIPSRFilter<REAL,DIM>*> _mincut_filters;
@@ -214,7 +214,7 @@ public:
  * @tparam REAL 
  * @tparam DIM 
  */
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class IPSR_Factory{
     std::vector<std::string> _cmd;
     std::string _input_name;
@@ -235,7 +235,7 @@ public:
     IPSR_Factory(const std::string& input_name, const std::string& output_path,
     int iters, double pointweight, int depth, int k_neighbors,int seed = 0
     ){
-        std::string command = "PoissonRecon --in " + input_name + " --out " + output_path + "  --bType 2 --depth " + to_string(depth) + " --pointWeight " + to_string(pointweight);
+        std::string command = "PoissonRecon --in " + input_name + " --out " + output_path + "  --bType 2 --depth " + std::to_string(depth) + " --pointWeight " + std::to_string(pointweight);
         _cmd = split(command);
         _input_name = input_name;
         _output_path = output_path;
@@ -282,13 +282,15 @@ public:
 
 /******************************************************************一些常用的ipsr handle****************************************************************************/
 
-    IPSR_HANDLE_P get_classic_neumman_ipsr_handle(int seed = _seed){
+    IPSR_HANDLE_P get_classic_neumman_ipsr_handle(int seed){
         return create_single_ipsr_handle(neumman_ind_ipsr,new RandomInit<REAL, DIM>(seed));
     }
-    
-    IPSR_HANDLE_P get_classic_dirichlet_ipsr_handle(int seed = _seed) {
+    IPSR_HANDLE_P get_classic_neumman_ipsr_handle(){ return get_classic_neumman_ipsr_handle(_seed); }
+
+    IPSR_HANDLE_P get_classic_dirichlet_ipsr_handle(int seed) {
         return create_single_ipsr_handle(diri_ind_ipsr,new RandomInit<REAL, DIM>(seed));
     }
+    IPSR_HANDLE_P get_classic_dirichlet_ipsr_handle(){ return get_classic_dirichlet_ipsr_handle(_seed); }
     
 
 /******************************************************************一些依赖这组参数的help func****************************************************************************/
@@ -304,7 +306,7 @@ public:
         std::vector<double> weight_sample;
         std::vector<char*> argv_str(_cmd.size());
         std::vector<std::string> tcmd(_cmd);
-        change_args(tcmd, "--depth", to_string(depth));
+        change_args(tcmd, "--depth", std::to_string(depth));
         for (int i = 0; i < tcmd.size(); i++) {
             char* p = new char[tcmd[i].size() + 1];
             strcpy(p, tcmd[i].c_str());
@@ -329,7 +331,7 @@ public:
 
         if (temp_cmd[find_arg(temp_cmd, "--depth") + 1] == "-1") {
             printf("WARNING::--depth == -1, use 10 for alternate\n");
-            change_args(temp_cmd, "--depth", to_string(10));
+            change_args(temp_cmd, "--depth", std::to_string(10));
         }
         for (int i = 0; i < temp_cmd.size(); i++) {
             argv_str[i] = new char[temp_cmd[i].size() + 1];
@@ -355,7 +357,7 @@ public:
 
         if (temp_cmd[find_arg(temp_cmd, "--depth") + 1] == "-1") {
             printf("WARNING::--depth == -1, use 10 for alternate\n");
-            change_args(temp_cmd, "--depth", to_string(10));
+            change_args(temp_cmd, "--depth", std::to_string(10));
         }
         std::vector<char*> argv_str(temp_cmd.size());
         for (int i = 0; i < temp_cmd.size(); i++) {
@@ -375,11 +377,11 @@ public:
 
     std::string get_resname() {
         std::string depth = _cmd[find_arg(this->_cmd, "--depth") + 1];
-        std::string filename = "it_" + to_string(_iters);
+        std::string filename = "it_" + std::to_string(_iters);
         filename += "_dp_" + depth;
-        filename += "_nb_" + to_string(_k_neighbors);
-        filename += "_sd_" + to_string(_seed);
-        filename += "_pt_" + to_string(_pointweight);
+        filename += "_nb_" + std::to_string(_k_neighbors);
+        filename += "_sd_" + std::to_string(_seed);
+        filename += "_pt_" + std::to_string(_pointweight);
         //std::string res_name = filename;
         return filename;
     }

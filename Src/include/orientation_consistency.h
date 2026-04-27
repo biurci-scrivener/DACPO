@@ -172,7 +172,7 @@ namespace Rasterlization{
     * @param imageWidth 分辨率参数 越大越精确 
     * @param imageHeight 分辨率参数 越大越精确
     */
-   template<typename REAL, int DIM>
+   template<typename REAL, unsigned int DIM>
    std::vector<int> computeVisibility(const MESH& mesh, const Point<float, 3>& viewPoints, const Point<float, 3>& lookat, const Point<float, 3>& up, int imageWidth = 1920, int imageHeight = 1080) {
        printf("caculating visibility for mesh...\n");
        std::vector<Rasterlization::Triangle> triangles;
@@ -197,7 +197,7 @@ namespace Rasterlization{
        Eigen::Vector3d lookat_eigen(lookat[0], lookat[1], lookat[2]);
        Eigen::Vector3d up_eigen(up[0], up[1], up[2]);
        printf("start...\n");
-       auto res =  _computeVisibility(triangles, vertices, viewPoints_eigen, lookat_eigen, up_eigen, imageWidth, imageHeight);
+       auto res =  _computeVisibility(triangles, vertices, viewPoints_eigen, lookat_eigen, up_eigen, imageWidth, imageHeight, PROJECTION_TYPE::ORTHOGRAPHIC);
        printf("calculate visibility done!\n");
        return res;
    }
@@ -209,7 +209,7 @@ namespace Rasterlization{
     * @param mesh 
     * @return std::vector<int> 
     */
-   template<typename REAL, int DIM>
+   template<typename REAL, unsigned int DIM>
    std::vector<int> random_view(const MESH& mesh,int image_width = 1920, int image_height = 1080) {
        // 随机生成观察点
        int randidx = rand() % mesh.first.size();
@@ -234,7 +234,7 @@ namespace Rasterlization{
     * @brief 
     * 将mesh转换为triangle和vertex 
     */
-   template<typename REAL, int DIM>
+   template<typename REAL, unsigned int DIM>
    void mesh2tv(const MESH& mesh, std::vector<Triangle>& triangles, std::vector<Vertex>& vertices){
       triangles.clear();
       vertices.clear();
@@ -261,7 +261,7 @@ namespace Rasterlization{
 /**
  * 随机选取若干个点,计算这些点的几何均值,作为view_point(防止view_point和lookat重合)
  */
-template<typename REAL,int DIM>
+template<typename REAL, unsigned int DIM>
 Point<REAL, DIM> innner_random_view_point(const MESH& mesh,int K = 5) {
     Point<REAL, DIM> view_point;
     for (int i = 0; i < DIM; i++) {
@@ -297,7 +297,7 @@ std::vector<Eigen::Vector3d> get_dodecahedron_vertex();
  * @param vertex_getter 生成观察点的基函数 
  * @return int 
  */
-template<typename REAL,int DIM>
+template<typename REAL, unsigned int DIM>
 int get_viewpoints_lookat(const MESH& mesh,
     std::vector<Eigen::Vector3d>& view_points, std::vector<Eigen::Vector3d>& lookat,std::vector<Eigen::Vector3d>& up,
     VertexGetterP vertex_getter = get_tetrahedron_vertex) 
@@ -315,7 +315,7 @@ int get_viewpoints_lookat(const MESH& mesh,
     // 计算mesh的半径
     REAL mesh_radius = 0;
     for (auto& vertex : mesh.first) {
-        mesh_radius = max(mesh_radius, Point<REAL, DIM>::SquareNorm((vertex - mesh_center)));
+        mesh_radius = std::max(mesh_radius, Point<REAL, DIM>::SquareNorm((vertex - mesh_center)));
     }
     mesh_radius = std::sqrt(mesh_radius);
     Eigen::Vector3d emesh_center({ mesh_center[0],mesh_center[1],mesh_center[2] });
@@ -356,7 +356,7 @@ int get_viewpoints_lookat(const MESH& mesh,
 //  * @param path 如果path不为空,则将每个视角下的可见面片写入ply文件
 //  * @return double 
 //  */
-// template<typename REAL,int DIM>
+// template<typename REAL, unsigned int DIM>
 // double orientation_consistence(const MESH& mesh, std::string path = "", VertexGetterP func = get_tetrahedron_vertex) {
 //     printf("start caculate orientation_consistency...\n");
 //     double sum_consistency = 0;
@@ -390,14 +390,14 @@ int get_viewpoints_lookat(const MESH& mesh,
 //     printf("caculate orientation_consistency done!\n");
 //     return sum_consistency / times;
 // }
-// template<typename REAL,int DIM>
+// template<typename REAL, unsigned int DIM>
 
 
 lzd_tools::FiniteMap get_orient_color();
 lzd_tools::FiniteMap get_100_color();
 
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 static std::string get_vertex_getter_name(VertexGetterP _func){
     if(_func == get_tetrahedron_vertex){
         return "get_tetrahedron_vertex";
@@ -409,7 +409,7 @@ static std::string get_vertex_getter_name(VertexGetterP _func){
     }
 }
 
-template<typename REAL,int DIM>
+template<typename REAL, unsigned int DIM>
 static VertexGetterP get_vertex_getter_by_name(std::string name){
     if(name == "get_tetrahedron_vertex"){
         return get_tetrahedron_vertex;
@@ -428,7 +428,7 @@ static VertexGetterP get_vertex_getter_by_name(std::string name){
  * @param view_point 
  * @return std::vector<bool> 
  */
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 std::vector<bool> is_inside(const ORIENTED_POINTS& op, const Point<REAL, DIM>& view_point){
     std::vector<bool> res(op.size());
 #pragma omp parallel for
@@ -441,7 +441,7 @@ std::vector<bool> is_inside(const ORIENTED_POINTS& op, const Point<REAL, DIM>& v
 }
 
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class PointOrientationConsistency {
 private:
     VertexGetterP _func;
@@ -488,7 +488,7 @@ public:
                     outside++;
                 }
             }
-            double consistency = (double)max(inside, outside) / (double)(inside + outside);
+            double consistency = (double)std::max(inside, outside) / (double)(inside + outside);
             consistencies[0] = consistency;
             if (path != "") {
                 std::vector<int> flag(op.size(), NOT_SEEN);
@@ -514,7 +514,7 @@ public:
     }
 };
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 void DrawTriangleMesh(const MESH& mesh, const std::vector<int>& orient_flag,
     std::string& path, const Eigen::Vector3d viewPoints,const Eigen::Vector3d lookat
 ) {
@@ -533,7 +533,7 @@ void DrawTriangleMesh(const MESH& mesh, const std::vector<int>& orient_flag,
     lzd_tools::mesh2ply(tmesh2, path, XForm<REAL, DIM + 1>().Identity(), std::make_pair(t_flag, get_orient_color()));
 }
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 void DrawTriangleCluster(const MESH& mesh, const std::vector<int>& cluster_id,
     std::string& path, const Eigen::Vector3d viewPoints, const Eigen::Vector3d lookat
 ) {
@@ -560,7 +560,7 @@ void DrawTriangleCluster(const MESH& mesh, const std::vector<int>& cluster_id,
 }
 
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class MeshConsistency {
 public:
     virtual double cal_consistency(const MESH& mesh, std::vector<double>& consistencies, std::string path = "", std::vector<int> tri_type = std::vector<int>()) = 0;
@@ -574,7 +574,7 @@ public:
  * @tparam REAL 
  * @tparam DIM 
  */
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class OrientationConsistency:public MeshConsistency<REAL,DIM>{
 private:
     VertexGetterP _func;
@@ -624,9 +624,9 @@ public:
             consistencies.push_back(consistency);
             sum_consistency += consistency;
             if (path != "") {
-                if (tri_type.size() == mesh.second.size())img->cal_boundary(tri_type);
-                DrawTriangleMesh(mesh, orient_flag, path + "_time_" + std::to_string(i) + ".ply", view_points[i], lookat[i]);
-                img->draw(path + "_time_" + std::to_string(i) + ".jpg");
+                // if (tri_type.size() == mesh.second.size())img->cal_boundary(tri_type);
+                // DrawTriangleMesh(mesh, orient_flag, path + "_time_" + std::to_string(i) + ".ply", view_points[i], lookat[i]);
+                // img->draw(path + "_time_" + std::to_string(i) + ".jpg");
             }
             img->reset();
         }
@@ -646,7 +646,7 @@ public:
 };
 
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class MaxAB:public MeshConsistency<REAL,DIM>{
     VertexGetterP _func;
     unsigned int _width;//分辨率宽度
@@ -702,10 +702,10 @@ public:
             }
 
             if (path != "") {
-                img->cal_boundary(tri_type);
-                DrawTriangleMesh(mesh, orient_flag, path + "_time_" + std::to_string(i) + ".ply", view_points[i], lookat[i]);
-                img->draw(path + "_time_" + std::to_string(i) + ".jpg");
-                img->draw_cluster(path + "_time_" + std::to_string(i) + "_cluster.jpg");
+                // img->cal_boundary(tri_type);
+                // DrawTriangleMesh(mesh, orient_flag, path + "_time_" + std::to_string(i) + ".ply", view_points[i], lookat[i]);
+                // img->draw(path + "_time_" + std::to_string(i) + ".jpg");
+                // img->draw_cluster(path + "_time_" + std::to_string(i) + "_cluster.jpg");
                 
             }
             img->reset();
@@ -730,7 +730,7 @@ public:
 };
 
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class MaxAB_Mesh{
     VertexGetterP _func;
 
@@ -865,9 +865,9 @@ class MaxAB_Mesh{
 
         for(int i = 0;i<mesh.second.size();i++){
             auto& face = mesh.second[i];
-            auto& v1 = p2eip(mesh.first[face[0]]);
-            auto& v2 = p2eip(mesh.first[face[1]]);
-            auto& v3 = p2eip(mesh.first[face[2]]);
+            Eigen::Vector3d v1 = p2eip(mesh.first[face[0]]);
+            Eigen::Vector3d v2 = p2eip(mesh.first[face[1]]);
+            Eigen::Vector3d v3 = p2eip(mesh.first[face[2]]);
             Eigen::Vector3d normal = (v2 - v1).cross(v3 - v1);
             Eigen::Vector3d ray = view_point - v1; // WARNING 只用第一个顶点的法向量 简化计算了 
             orient_flag[i] = ray.dot(normal) > 0 ? 1 : 0;
@@ -1002,8 +1002,8 @@ public:
                         cluster_id.push_back(cid);
                     }
                 }
-                DrawTriangleCluster(res_mesh, cluster_id, path + "_time_cluster" + std::to_string(i) + ".ply", view_points[i], lookat[i]);
-                DrawTriangleCluster(mesh, tri_type, path + "_time_" + std::to_string(i) + ".ply", view_points[i], lookat[i]);
+                // DrawTriangleCluster(res_mesh, cluster_id, path + "_time_cluster" + std::to_string(i) + ".ply", view_points[i], lookat[i]);
+                // DrawTriangleCluster(mesh, tri_type, path + "_time_" + std::to_string(i) + ".ply", view_points[i], lookat[i]);
             }
         
         }

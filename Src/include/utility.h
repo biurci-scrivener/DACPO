@@ -35,7 +35,7 @@ DAMAGE.
 #include "PoissionEntrance.h"
 
 template <class Real, unsigned int Dim>
-void transform(std::vector<std::pair<Point<Real, Dim>, Normal<Real, Dim>>> &points_normals, const XForm<Real, Dim + 1> &iXForm)
+void transform(std::vector<std::pair<Point<Real, Dim>, Normal<Real, (int)Dim>>> &points_normals, const XForm<Real, Dim + 1> &iXForm)
 {
 	for (size_t i = 0; i < points_normals.size(); ++i)
 	{
@@ -44,7 +44,7 @@ void transform(std::vector<std::pair<Point<Real, Dim>, Normal<Real, Dim>>> &poin
 }
 
 template <class Real, unsigned int Dim>
-void ply_reader(const std::string& file, std::vector<std::pair<Point<Real, Dim>, Normal<Real, Dim>>>& points_normals)
+void ply_reader(const std::string& file, std::vector<std::pair<Point<Real, Dim>, Normal<Real, (int)Dim>>>& points_normals)
 {
 	happly::PLYData plyIn(file);
 	// Get data from the object
@@ -78,7 +78,7 @@ void ply_reader(const std::string& file, std::vector<std::pair<Point<Real, Dim>,
 		{
 			n[0] = n[1] = n[2] = 0.01;
 		}
-		Normal<Real, Dim> normal(n);
+		Normal<Real, (int)Dim> normal(n);
 		points_normals.push_back(std::make_pair(p, normal));
 	}
 
@@ -89,7 +89,7 @@ void ply_reader(const std::string& file, std::vector<std::pair<Point<Real, Dim>,
 	// 		p[i] = data[i];
 	// 		n[i] = data[i];
 	// 	}
-	// 	Normal<Real, Dim> normal(n);
+	// 	Normal<Real, (int)Dim> normal(n);
 	// 	points_normals.push_back(std::make_pair(p,normal));
 	// }
 
@@ -149,7 +149,7 @@ bool output_ply(const std::string &outFile, const std::pair<std::vector<Point<Re
 /// <returns></returns>
 template <class Real, unsigned int Dim>
 bool output_sample_points_and_normals(const std::string& outFile, const std::vector<std::pair<Point<Real, Dim>,
-	Normal<Real, Dim>>>& points_normals, const XForm<Real, Dim + 1>& iXForm,
+	Normal<Real, (int)Dim>>>& points_normals, const XForm<Real, Dim + 1>& iXForm,
 	std::pair<std::vector<int>, std::vector<std::vector<int>>> flag = std::make_pair(std::vector<int>(), std::vector<std::vector<int>>()))
 {
 	std::ofstream plyfile;
@@ -208,7 +208,7 @@ bool output_sample_points_and_normals(const std::string& outFile, const std::vec
 
 template <class Real, unsigned int Dim>
 bool output_all_points_and_normals(const std::string& outFile, const std::vector<std::pair<Point<Real, Dim>,
-	Normal<Real, Dim>>>& points_normals, const XForm<Real, Dim + 1>& iXForm,
+	Normal<Real, (int)Dim>>>& points_normals, const XForm<Real, Dim + 1>& iXForm,
 	std::vector<int> labels) {
 	
 
@@ -219,11 +219,11 @@ bool output_all_points_and_normals(const std::string& outFile, const std::vector
 
 template <class Real, unsigned int Dim>
 bool output_all_points_and_normals(const std::string &outFile, const std::string &input_name, 
-	const std::vector<std::pair<Point<Real, Dim>, Normal<Real, Dim>>> &points_normals, 
+	const std::vector<std::pair<Point<Real, Dim>, Normal<Real, (int)Dim>>> &points_normals, 
 	const kdt::KDTree<kdt::KDTreePoint> &tree, 
 	const XForm<Real, Dim + 1> &iXForm)
 {
-	std::vector<std::pair<Point<Real, Dim>, Normal<Real, Dim>>> points_normals_all;
+	std::vector<std::pair<Point<Real, Dim>, Normal<Real, (int)Dim>>> points_normals_all;
 	ply_reader<Real, Dim>(input_name, points_normals_all);
 	auto inv_iXForm = iXForm.inverse();
 	for (size_t i = 0; i < points_normals_all.size(); ++i)
@@ -274,31 +274,31 @@ bool operator==(const Normal<Real, Dim> &n1, const Normal<Real, Dim> &n2)
 	return true;
 }
 
-template <class Real, unsigned int Dim>
+template <class Real, int Dim>
 void normalize(Normal<Real, Dim> &n)
 {
 	Real len = 0;
-	for (unsigned int i = 0; i < Dim; ++i)
+	for (int i = 0; i < Dim; ++i)
 		len += n.normal[i] * n.normal[i];
 	if (len != 0)
 	{
 		len = sqrt(len);
-		for (unsigned int i = 0; i < Dim; ++i)
+		for (int i = 0; i < Dim; ++i)
 			n.normal[i] /= len;
 	}
 }
 
-template <class Real, unsigned int Dim>
+template <class Real, int Dim>
 Real dot(const Normal<Real, Dim> &n1, const Normal<Real, Dim> &n2)
 {
 	Real d = 0;
-	for (unsigned int i = 0; i < Dim; ++i)
+	for (int i = 0; i < Dim; ++i)
 		d += n1.normal[i] * n2.normal[i];
 	return d;
 }
 
 // 返回弧度制夹角
-template <class Real, unsigned int Dim>
+template <class Real, int Dim>
 Real calculate_angle(const Normal<Real, Dim> &n1, const Normal<Real, Dim> &n2)
 {
 	// normalize

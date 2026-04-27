@@ -5,11 +5,11 @@
  * @brief 
  * 判断是否更新某个点
  */
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class Update_filter {
 public:
     // 请使用And
-    virtual std::vector<int> if_update(const std::vector<Normal<REAL, DIM>>& project_normal) = 0;
+    virtual std::vector<int> if_update(const std::vector<Normal<REAL, (int)DIM>>& project_normal) = 0;
     virtual nlohmann::json get_config() = 0;
 
     /**
@@ -18,7 +18,7 @@ public:
      * @param project_normal 
      * @return int 本次被拒绝的点的数量
      */
-    int And(std::vector<int>& update_flag,const std::vector<Normal<REAL, DIM>>& project_normal){
+    int And(std::vector<int>& update_flag,const std::vector<Normal<REAL, (int)DIM>>& project_normal){
         std::vector<int> new_update_flag = if_update(project_normal);
         int refusenum = 0;
         for(int i = 0;i<update_flag.size();i++){
@@ -31,7 +31,7 @@ public:
     }
 };
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class NonZeroFilter : public Update_filter<REAL, DIM> {
     nlohmann::json _config_j;
     nlohmann::json _log_j;
@@ -47,11 +47,11 @@ public:
     nlohmann::json get_log() {
         return _log_j;
     }
-    std::vector<int> if_update(const std::vector<Normal<REAL, DIM>>& project_normal) {
+    std::vector<int> if_update(const std::vector<Normal<REAL, (int)DIM>>& project_normal) {
         std::vector<int> res(project_normal.size(), 1);
         int refusenum = 0;
         for (int i = 0; i < project_normal.size(); i++) {
-            if (project_normal[i] == Normal<REAL, DIM>(Point<REAL, DIM>(0, 0, 0))) {
+            if (project_normal[i] == Normal<REAL, (int)DIM>(Point<REAL, DIM>(0, 0, 0))) {
                 res[i] = 0;
                 refusenum++;
             }
@@ -66,7 +66,7 @@ public:
  * @brief 
  * 对于与init结果的差距大于minthreshold且小于maxthreshold的点,拒绝更新
  */
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class InitFilter : public Update_filter<REAL, DIM> {
     ORIENTED_POINTS init_res;
     nlohmann::json _config_j;
@@ -114,7 +114,7 @@ public:
         return _log_j;
     }
 
-    std::vector<int> if_update(const std::vector<Normal<REAL, DIM>>& project_normal) {
+    std::vector<int> if_update(const std::vector<Normal<REAL, (int)DIM>>& project_normal) {
         int refusenum = 0;
         assert(project_normal.size() == init_res.size());
         std::vector<int> res(project_normal.size(), 1);

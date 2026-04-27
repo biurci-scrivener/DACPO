@@ -8,7 +8,7 @@ template<typename REAL>
 using INTERSACTION_MATRIX = std::vector<std::vector<REAL>>;
 
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 E_FIELD_GRAD<REAL> field_grad(const ORIENTED_POINTS& sources, const ORIENTED_POINTS& means, REAL _eps) {
     E_FIELD_GRAD<REAL> E_total(means.size(), std::vector<REAL>(DIM, 0));
 #pragma omp parallel for
@@ -38,7 +38,7 @@ E_FIELD_GRAD<REAL> field_grad(const ORIENTED_POINTS& sources, const ORIENTED_POI
     return E_total;
 };
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 REAL cal_field_intersaction(const ORIENTED_POINTS& sources, const ORIENTED_POINTS& means, REAL eps) {
     E_FIELD_GRAD<REAL> st_E = field_grad(sources, means, eps);
     REAL st_interaction = 0;

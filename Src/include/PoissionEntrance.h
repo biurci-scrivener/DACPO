@@ -7,11 +7,11 @@
 #define MESH_D std::pair<std::vector<Point<double, 3>>,std::vector<std::vector<int>>>
 
 // first: points; second: normals
-#define POINTS_NORMALS std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, DIM>>>
+#define POINTS_NORMALS std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, (int)DIM>>>
 // same as POINTS_NORMALS, but use double
 #define POINTS_NORMALS_D std::vector<std::pair<Point<double, 3>, Normal<double, 3>>>
 
-#define ORIENTED_POINTS std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, DIM>>>
+#define ORIENTED_POINTS std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, (int)DIM>>>
 
 
 POINTS_NORMALS_D sample_points_d(int argc, char* argv[], const POINTS_NORMALS_D& points_normals, XForm<double, 3 + 1>& iXForm, std::vector<double>* weight_samples);

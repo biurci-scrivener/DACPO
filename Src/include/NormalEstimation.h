@@ -8,13 +8,16 @@
 #include <graph_arg.h>
 #include <dipole.h>
 
-template<typename REAL,int DIM>
+template<typename REAL,unsigned int DIM>
 class NormalEstimation{
 public:
     virtual int Estimate(ORIENTED_POINTS& op) = 0;
     virtual nlohmann::json get_config() = 0;
 };
-template<typename REAL, int DIM>
+
+template<typename REAL, unsigned int DIM>
+NormalEstimation<REAL, DIM>* get_estimator_from_json(nlohmann::json estimator_config);
+template<typename REAL, unsigned int DIM>
 class DoingNothing : public NormalEstimation<REAL, DIM>{
 public:
     nlohmann::json get_config(){
@@ -28,7 +31,7 @@ public:
     }
 };
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class RandomInit : public NormalEstimation<REAL, DIM>{
     int _seed;
 public:
@@ -41,7 +44,7 @@ public:
     }
 
     int Estimate(ORIENTED_POINTS& op){
-        Normal<REAL, DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
+        Normal<REAL, (int)DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
         srand(_seed);
         for(int i = 0;i<op.size();i++){
             do{
@@ -55,7 +58,7 @@ public:
 };
 
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class Hoppe1994 : public NormalEstimation<REAL, DIM> {
     int _K;
     REAL _lambda;
@@ -82,7 +85,7 @@ public:
         //NormalEstimation<REAL, DIM>* pre_e = new RandomInit<REAL,DIM>(0);
         //pre_e->Estimate(points_normals);
         //_pre_estimator->Estimate(points_normals);// ΪOrientNormalsConsistentTangentPlane�ṩ������
-        Normal<REAL, DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
+        Normal<REAL, (int)DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
         open3d::geometry::PointCloud pcd;
         pcd.points_.resize(points_normals.size());
         pcd.normals_.resize(points_normals.size());
@@ -94,7 +97,7 @@ public:
         //o3d_norm_estimate(points_normals);;
         pcd.OrientNormalsConsistentTangentPlane(_K, _lambda, _cos_theta);
         for (int i = 0; i < points_normals.size(); i++) {
-            Normal<REAL, DIM> n;
+            Normal<REAL, (int)DIM> n;
             for (int j = 0; j < DIM; j++)n.normal[j] = pcd.normals_[i][j];
             points_normals[i].second = n;
             assert(!(points_normals[i].second == zero_normal));
@@ -105,7 +108,7 @@ public:
 };
 
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class PclNormalEstimation : public NormalEstimation<REAL, DIM> {
     int _k;
 public:
@@ -113,7 +116,7 @@ public:
     int Estimate(ORIENTED_POINTS& op) {
         NormalEstimation<REAL, DIM>* pre_e = new RandomInit<REAL, DIM>(0);
         pre_e->Estimate(op);
-        Normal<REAL, DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
+        Normal<REAL, (int)DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
         pcl::PointCloud<pcl::PointNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointNormal>);
         cloud->points.resize(op.size());
         for (int i = 0; i < op.size(); i++) {
@@ -129,7 +132,7 @@ public:
         ne.setKSearch(_k);
         ne.compute(*cloud_normals);
         for (int i = 0; i < op.size(); i++) {
-            Normal<REAL, DIM> n;
+            Normal<REAL, (int)DIM> n;
             n.normal[0] = cloud_normals->points[i].normal_x;
             n.normal[1] = cloud_normals->points[i].normal_y;
             n.normal[2] = cloud_normals->points[i].normal_z;
@@ -147,13 +150,13 @@ public:
     }
 };
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class PCAEstimation : public NormalEstimation<REAL, DIM> {
     int _k;
 public:
     PCAEstimation(int k = 10) :_k(k) {}
     int Estimate(ORIENTED_POINTS& points_normals) {
-        Normal<REAL, DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
+        Normal<REAL, (int)DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
         open3d::geometry::PointCloud pcd;
         pcd.points_.resize(points_normals.size());
         pcd.normals_.resize(points_normals.size());
@@ -162,7 +165,7 @@ public:
         }
         pcd.EstimateNormals(open3d::geometry::KDTreeSearchParamKNN(_k));
         for (int i = 0; i < points_normals.size(); i++) {
-            Normal<REAL, DIM> n;
+            Normal<REAL, (int)DIM> n;
             for (int j = 0; j < DIM; j++)n.normal[j] = pcd.normals_[i][j];
             points_normals[i].second = n;
             assert(!(points_normals[i].second == zero_normal));
@@ -180,16 +183,16 @@ public:
 
 
 // TODO
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class FieldPropagationEstimate: public NormalEstimation<REAL, DIM>{
     NormalEstimation<REAL, DIM>* _pre_estimator;
     FIELD_PROPAGATION::MaskFieldPropagation _propagator;
     
 public:
 
-    FieldPropagationEstimate(NormalEstimation<REAL, DIM>* pre_estimator, int C, double eps, int times, int mask_size, int knngraph_k, double knngraph_radius) :{
+    FieldPropagationEstimate(NormalEstimation<REAL, DIM>* pre_estimator, int C, double eps, int times, int mask_size, int knngraph_k, double knngraph_radius) {
 		_pre_estimator = pre_estimator;
-		_propagator = FIELD_PROPAGATION::MaskFieldPropagation(FIELD_PROPAGATION::MaskField(C,eps), times, mask_size, knngraph_k, knngraph_radius);
+		_propagator = FIELD_PROPAGATION::MaskFieldPropagation(FIELD_PROPAGATION::MaskField(C,eps), times, mask_size, knngraph_k, knngraph_radius, false);
     }
 
 	FieldPropagationEstimate(nlohmann::json config) :_propagator(FIELD_PROPAGATION::MaskField(config["C"], config["eps"]), config["times"], config["knn_mask"], config["k_neighbors"], config["r"], config["diffuse"])  
@@ -223,7 +226,7 @@ public:
     }
 };
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class SocketNormalEstimation : public NormalEstimation<REAL, DIM> {
     std::string _ip;
     int _port;
@@ -295,7 +298,7 @@ class SocketNormalEstimation : public NormalEstimation<REAL, DIM> {
             std::cerr << "ERROR!! offset too large" << std::endl;
         }
         // 将零向量替换为估计的法向量
-        Normal<REAL, DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
+        Normal<REAL, (int)DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
         int zero_count = 0;
         for (int i = 0; i < op.size(); i++) {
             if (op[i].second == zero_normal) {
@@ -338,7 +341,7 @@ public:
 
 
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 NormalEstimation<REAL, DIM>* get_estimator_from_json(nlohmann::json estimator_config) {
     NormalEstimation<REAL, DIM>* estimator = new RandomInit<REAL, DIM>(0);
     if (estimator_config["name"] == "Hoppe1994") {
@@ -363,7 +366,7 @@ NormalEstimation<REAL, DIM>* get_estimator_from_json(nlohmann::json estimator_co
         estimator = new SocketNormalEstimation<REAL, DIM>(function_name, func_config);
     }
     else if(estimator_config["name"] == "RandomInit"){
-        seed = estimator_config["RandomInitConf"]["seed"];
+        int seed = estimator_config["RandomInitConf"]["seed"];
         estimator = new RandomInit<REAL, DIM>(seed);
 	}
 	else if (estimator_config["name"] == "FieldPropagationEstimate") {
@@ -372,8 +375,8 @@ NormalEstimation<REAL, DIM>* get_estimator_from_json(nlohmann::json estimator_co
         estimator = new PCAEstimation<REAL, DIM>(estimator_config["PCAConf"]["k"]);
     }
     else {
-        cout << "Error: estimator name not found" << endl;
-        cout << "Using default estimator: RandomInit" << endl;
+        std::cout << "Error: estimator name not found" << std::endl;
+        std::cout << "Using default estimator: RandomInit" << std::endl;
     }
     return estimator;
 };

@@ -9,7 +9,7 @@ void test_open3d();
 /// @param eps 查找半径 
 /// @param min_points 用于判定核心点的最小邻域点数。当min_points=1时，算法退化为传统的基于密度的聚类算法
 /// @return 
-template <typename REAL, int DIM>
+template <typename REAL, unsigned int DIM>
 int o3d_dbscan_extraction(const ORIENTED_POINTS& points_normals,std::vector<ORIENTED_POINTS>& opss,ORIENTED_POINTS& other,REAL eps = 0.1, int min_points = 10){
     // Create a point cloud
     open3d::geometry::PointCloud pcd;
@@ -46,7 +46,7 @@ int o3d_dbscan_extraction(const ORIENTED_POINTS& points_normals,std::vector<ORIE
 /// @param eps Density parameter that is used to find neighbouring points（来自pcd库）
 /// @param min_points 用于判定核心点的最小邻域点数。当min_points=1时，算法退化为传统的基于密度的聚类算法
 /// @return 
-template <typename REAL, int DIM>
+template <typename REAL, unsigned int DIM>
 int o3d_dbscan_extraction(const ORIENTED_POINTS& points_normals,std::vector<int>& labels,REAL eps = 0.1, int min_points = 10){
     // Create a point cloud
     open3d::geometry::PointCloud pcd;
@@ -69,7 +69,7 @@ int o3d_dbscan_extraction(const ORIENTED_POINTS& points_normals,std::vector<int>
  * @param radius HPR算法的参数，越大则可见点越多 
  * @return int 可见点的数量
  */
-template <typename REAL, int DIM>
+template <typename REAL, unsigned int DIM>
 int HPR(const ORIENTED_POINTS& points_normals, std::vector<size_t>& hop_idxs, Point<REAL,DIM> cam, REAL radius = 1000){
     open3d::geometry::PointCloud pcd;
     pcd.points_.resize(points_normals.size());
@@ -91,7 +91,7 @@ int HPR(const ORIENTED_POINTS& points_normals, std::vector<size_t>& hop_idxs, Po
  * @param hop_idxs 
  * @return int 
  */
-template <typename REAL, int DIM>
+template <typename REAL, unsigned int DIM>
 int rand_HPR(const ORIENTED_POINTS& points_normals, std::vector<int>& if_visiable) {
     printf("random hpr...\n");
     open3d::geometry::PointCloud pcd;
@@ -117,7 +117,7 @@ int rand_HPR(const ORIENTED_POINTS& points_normals, std::vector<int>& if_visiabl
     return residx.size();
 }
 
-template <typename REAL, int DIM>
+template <typename REAL, unsigned int DIM>
 int o3d_norm_estimate(ORIENTED_POINTS& points_normals, REAL eps = 0.1, int min_points = 10) {
     // Create a point cloud
     open3d::geometry::PointCloud pcd;
@@ -128,14 +128,14 @@ int o3d_norm_estimate(ORIENTED_POINTS& points_normals, REAL eps = 0.1, int min_p
     }
     pcd.EstimateNormals();
     for (int i = 0; i < points_normals.size(); i++) {
-        Normal<REAL, DIM> n;
+        Normal<REAL, (int)DIM> n;
         for(int j = 0;j<DIM;j++)n.normal[j] = pcd.normals_[i][j];
         points_normals[i].second = n;
     }
     return 0;
 }
 
-template <typename REAL, int DIM>
+template <typename REAL, unsigned int DIM>
 open3d::t::geometry::TriangleMesh convertMesh2o3dMesh(const MESH& mesh) {
     open3d::core::Tensor vertices({ (long long)mesh.first.size(), DIM }, open3d::core::Dtype::Float32);
     open3d::core::Tensor triangles({ (long long)mesh.second.size(), 3 }, open3d::core::Dtype::Int32);
@@ -153,7 +153,7 @@ open3d::t::geometry::TriangleMesh convertMesh2o3dMesh(const MESH& mesh) {
     return open3d::t::geometry::TriangleMesh(vertices, triangles);
 }
 
-template <typename REAL, int DIM>
+template <typename REAL, unsigned int DIM>
 MESH subdivision_mesh(const MESH& mesh,int times = 1) {
     open3d::geometry::TriangleMesh o3d_mesh;
     for (int i = 0; i < mesh.first.size(); i++) {

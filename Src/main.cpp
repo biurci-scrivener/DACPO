@@ -28,6 +28,7 @@ DAMAGE.
 #include <queue>
 #include <algorithm>
 #include <filesystem>
+#include <omp.h>
 #include <iostream>
 #include <IPSR.h>
 //#include <bitree_ipsr.h>
@@ -435,13 +436,39 @@ void betweenness(const string& input_name, const string& output_path, int iters,
 
 int main(int argc, char *argv[])
 {
+	#pragma omp parallel
+	{
+		#pragma omp single
+		std::cout << "OpenMP: " << omp_get_num_threads() << " threads ("
+		          << omp_get_max_threads() << " max)" << std::endl;
+	}
 	string input_name;
 	int iters = 30;
 	double pointweight = 10;
 	int depth = 10;
 	int k_neighbors = 10;
 	IPSR_TYPE ipsr_type = IPSR_TYPE::CLASSIC_IPSR;
-	for (int i = 1; i < argc; i += 2)
+
+	// Convenience: `./DACPO <input.ply>` — run with sensible defaults.
+	// Output goes next to the input in a `dacpo_out/` subdirectory.
+	bool convenience_mode = (argc == 2 && argv[1][0] != '-');
+	if (convenience_mode) {
+		std::filesystem::path in_path(argv[1]);
+		input_data_root = "";
+		input_name = in_path.string();
+		out_data_root = (in_path.parent_path() / "dacpo_out").string() + "/";
+		std::filesystem::path exe_dir = std::filesystem::path(argv[0]).parent_path();
+		for (auto p : { exe_dir / "../../../conf/default",
+		                exe_dir / "../../conf/default",
+		                exe_dir / "conf/default" }) {
+			if (std::filesystem::exists(p / "common.json")) {
+				ConfigManager::config_floder = std::filesystem::canonical(p).string() + "/";
+				break;
+			}
+		}
+	}
+
+	for (int i = 1; !convenience_mode && i < argc; i += 2)
 	{
 		if (strcmp(argv[i], "--in") == 0)
 		{
@@ -635,7 +662,7 @@ int main(int argc, char *argv[])
 	IPSR_ENTRANCE ipsr = IPSR_ENTRANCE_MAP[ipsr_type];
 	ipsr(input_path, output_path, iters, pointweight, depth, k_neighbors);
 
-	printf("%s", lzd_tools::AcumutableTimer::get_time_map().dump(4));
+	printf("%s", lzd_tools::AcumutableTimer::get_time_map().dump(4).c_str());
 	printf("Main finish sussfully!!!");
 	return 0;
 }

@@ -7,7 +7,7 @@
  * 给定一个点云，将其分割为多个部分,每个部分对应一个整数标签
  * 注意：标签从0开始，连续递增
  * */
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class Segmenter{
 public:
     virtual nlohmann::json get_config() = 0;
@@ -81,7 +81,7 @@ public:
 };
 
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class DisjointSetCluster : public Segmenter<REAL, DIM>{
     double _eps;
     int _max_neighbers;
@@ -142,7 +142,7 @@ public:
 
 
 
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 class SpectralSegmenter : public Segmenter<REAL, DIM>{
     float _mininum_rate; //当块的大小小于点云总数的_mininum_rate时，不再继续分割
     int _k_neighbers;//k近邻参数
