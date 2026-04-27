@@ -16,7 +16,7 @@
 int pcd_seg(char * path);
 
 //#define ORIENTED_POINTS std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, DIM>>>
-template<typename REAL, int DIM>
+template<typename REAL, unsigned int DIM>
 int est_norm(const std::vector <Point<REAL, DIM>>& points, std::vector <Normal<REAL, DIM>>& normals, int k_neighbor = 5) {
     auto point_cloud = xyz2pcl(points);
     // create the normal estimation class, and pass the input dataset to it
@@ -55,7 +55,7 @@ int est_norm(const std::vector <Point<REAL, DIM>>& points, std::vector <Normal<R
 }
 
 
-template <typename REAL, int DIM>
+template <typename REAL, unsigned int DIM>
 pcl::PointCloud<pcl::PointXYZ>::Ptr xyz2pcl(const std::vector<Point<REAL, DIM>>& points){
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
     for(int i=0;i<points.size();i++){
@@ -68,7 +68,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr xyz2pcl(const std::vector<Point<REAL, DIM>>&
     return cloud;
 }
 
-template <typename REAL, int DIM>
+template <typename REAL, unsigned int DIM>
 std::vector<Point<REAL, DIM>> pcl2xyz(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
     std::vector<Point<REAL, DIM>> points;
     for(int i=0;i<cloud->size();i++){
@@ -81,7 +81,7 @@ std::vector<Point<REAL, DIM>> pcl2xyz(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
     return points;
 }
 
-template <typename REAL, int DIM>
+template <typename REAL, unsigned int DIM>
 pcl::PointCloud<pcl::PointNormal>::Ptr op2pcl(const std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, DIM>>>& points_normals){
     pcl::PointCloud<pcl::PointNormal>::Ptr cloud (new pcl::PointCloud<pcl::PointNormal>);
     for(int i=0;i<points_normals.size();i++){
@@ -95,7 +95,7 @@ pcl::PointCloud<pcl::PointNormal>::Ptr op2pcl(const std::vector<std::pair<Point<
     return cloud;
 }
 
-template <typename REAL, int DIM>
+template <typename REAL, unsigned int DIM>
 std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, DIM>>> pcl2op(pcl::PointCloud<pcl::PointNormal>::Ptr cloud){
     std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, DIM>>> points_normals;
     for(int i=0;i<cloud->size();i++){
@@ -116,7 +116,7 @@ std::vector<std::pair<Point<REAL, DIM>, Normal<REAL, DIM>>> pcl2op(pcl::PointClo
  * @param threshold 
  * @return int 
  */
-template <typename REAL, int DIM>
+template <typename REAL, unsigned int DIM>
 int pcd_plane_seg(const std::vector<Point<REAL, DIM>>& points, std::vector<std::vector<Point<REAL, DIM>>>& planes, std::vector<Point<REAL, DIM>>& other_points, REAL threshold = 0.02){
     // 将点云转换为pcl格式
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = xyz2pcl(points);
@@ -185,7 +185,7 @@ int pcd_plane_seg(const std::vector<Point<REAL, DIM>>& points, std::vector<std::
     return 0;
 }
 
-template <typename REAL, int DIM>
+template <typename REAL, unsigned int DIM>
 int pcl_euclidean_cluster_extraction(const std::vector<Point<REAL, DIM>>& points, std::vector<std::vector<Point<REAL, DIM>>>& clusters, std::vector<Point<REAL, DIM>>& other_points,REAL threshold = -1.0){
     // 将点云转换为pcl格式
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = xyz2pcl(points);
@@ -231,7 +231,7 @@ int pcl_euclidean_cluster_extraction(const std::vector<Point<REAL, DIM>>& points
     return 0;
 }
 
-template <typename REAL, int DIM>
+template <typename REAL, unsigned int DIM>
 int pcl_euclidean_cluster_extraction(ORIENTED_POINTS points_normals,std::vector<ORIENTED_POINTS>& opss,ORIENTED_POINTS& other,REAL threshold = -1.0){
     std::vector<Point<REAL, DIM>> raw_points;
 	std::vector<std::vector<Point<REAL,DIM>>> raw_planes;
