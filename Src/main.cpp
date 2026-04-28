@@ -643,6 +643,7 @@ int main(int argc, char *argv[])
 	printf("--iters       %d\n", iters);
 	printf("--pointWeight %f\n", pointweight);
 	printf("--depth       %d\n", depth);
+	printf("--ipsr_type.  %d\n", ipsr_type);
 	printf("--neighbors   %d\n\n", k_neighbors);
 
 
