@@ -95,7 +95,7 @@ cmdLineParameter<int>
 	BType("bType", DEFAULT_FEM_BOUNDARY + 1),
 #endif // !FAST_COMPILE
 	MaxMemoryGB("maxMemory", 0),
-	Threads("threads", omp_get_num_procs());
+	Threads("threads", omp_get_max_threads());
 
 cmdLineParameter<float>
 	DataX("data", 32.f),
