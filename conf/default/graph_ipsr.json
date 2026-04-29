@@ -1,6 +1,13 @@
 {
     "estimator": {
         "name": "FieldPropagationEstimate",
+        "FaCEConf": {
+            "name": "FaCE",
+            "exe_path": "/abs/path/to/face",
+            "input_prefix": "face_in",
+            "output_prefix": "face_out",
+            "work_subdir": "graph_ipsr/face_io/"
+        },
         "RandomInitConf": {
             "name": "RandomInit",
             "seed": 10

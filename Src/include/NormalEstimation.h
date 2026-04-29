@@ -7,6 +7,7 @@
 #include <socket_api.h>
 #include <graph_arg.h>
 #include <dipole.h>
+#include <filesystem>
 
 template<typename REAL,unsigned int DIM>
 class NormalEstimation{
@@ -16,7 +17,7 @@ public:
 };
 
 template<typename REAL, unsigned int DIM>
-NormalEstimation<REAL, DIM>* get_estimator_from_json(nlohmann::json estimator_config);
+NormalEstimation<REAL, DIM>* get_estimator_from_json(nlohmann::json estimator_config, const std::string& run_output_path = "");
 template<typename REAL, unsigned int DIM>
 class DoingNothing : public NormalEstimation<REAL, DIM>{
 public:
@@ -337,12 +338,94 @@ public:
     }
 
 };
-    
+
+
+template<typename REAL, unsigned int DIM>
+class FaCENormalEstimate : public NormalEstimation<REAL, DIM> {
+    std::string _exe_path;
+    std::string _work_dir;        // absolute dir for scratch input/output PLYs
+    std::string _input_prefix;
+    std::string _output_prefix;
+
+    std::atomic<int> _next_segment_id{0};
+
+public:
+    FaCENormalEstimate(nlohmann::json config, const std::string& run_output_path) {
+        _exe_path = config.value("exe_path", std::string(""));
+        _input_prefix = config.value("input_prefix", std::string("face_in"));
+        _output_prefix = config.value("output_prefix", std::string("face_out"));
+
+        std::string subdir = config.value("work_subdir", std::string("graph_ipsr/face_io/"));
+        _work_dir = (std::filesystem::path(run_output_path) / subdir).string();
+
+        if (_exe_path.empty()) {
+            std::cerr << "FaCENormalEstimate: exe_path is empty in config" << std::endl;
+            assert(false);
+        }
+        std::filesystem::create_directories(_work_dir);
+    }
+
+    nlohmann::json get_config() {
+        nlohmann::json j;
+        j["name"] = "FaCE";
+        j["exe_path"] = _exe_path;
+        j["work_dir"] = _work_dir;
+        return j;
+    }
+
+    int Estimate(ORIENTED_POINTS& op) {
+        int id = _next_segment_id.fetch_add(1);
+
+        std::filesystem::path input_path  = std::filesystem::path(_work_dir) / (_input_prefix  + "_" + std::to_string(id) + ".ply");
+        std::filesystem::path output_path = std::filesystem::path(_work_dir) / (_output_prefix + "_" + std::to_string(id) + ".ply");
+
+        lzd_tools::op2ply(op, input_path.string(), XForm<REAL, DIM + 1>().Identity());
+
+        // exe input --h --o output --open --no-checkpoint
+        std::string command = _exe_path + " " + input_path.string()
+            + " --h --o " + output_path.string()
+            + " --open --no-checkpoint";
+        int rc = std::system(command.c_str());
+        if (rc != 0) {
+            std::cerr << "FaCE exe returned " << rc << " for segment " << id << ": " << command << std::endl;
+            assert(false);
+            return -1;
+        }
+
+        ORIENTED_POINTS face_out;
+        ply_reader<REAL, DIM>(output_path.string(), face_out);
+        if (face_out.size() != op.size()) {
+            std::cerr << "FaCE output point count " << face_out.size()
+                      << " does not match input " << op.size()
+                      << " for segment " << id << std::endl;
+            assert(false);
+            return -1;
+        }
+
+        // exe preserves point order, so this is a one-to-one normal copy.
+        Normal<REAL, (int)DIM> zero_normal(Point<REAL, DIM>(0, 0, 0));
+        int zero_count = 0;
+        for (int i = 0; i < (int)op.size(); i++) {
+            op[i].second = face_out[i].second;
+            if (op[i].second == zero_normal) {
+                do {
+                    op[i].second = Point<REAL, DIM>(rand() % 1001, rand() % 1001 - 500.0, rand() % 1001 - 500.0);
+                } while (op[i].second == zero_normal);
+                normalize(op[i].second);
+                zero_count++;
+            }
+        }
+        if (zero_count > 0) {
+            printf("FaCE segment %d: %d / %zu zero normals replaced by random\n", id, zero_count, op.size());
+        }
+        return 0;
+    }
+};
 
 
 
 template<typename REAL, unsigned int DIM>
-NormalEstimation<REAL, DIM>* get_estimator_from_json(nlohmann::json estimator_config) {
+NormalEstimation<REAL, DIM>* get_estimator_from_json(nlohmann::json estimator_config, const std::string& run_output_path) {
     NormalEstimation<REAL, DIM>* estimator = new RandomInit<REAL, DIM>(0);
     if (estimator_config["name"] == "Hoppe1994") {
         nlohmann::json cj = estimator_config["Hoppe1994Conf"];
@@ -373,6 +456,9 @@ NormalEstimation<REAL, DIM>* get_estimator_from_json(nlohmann::json estimator_co
         estimator = new FieldPropagationEstimate<REAL,DIM>(estimator_config["FieldPropagationEstimateConf"]);
 	}else if (estimator_config["name"] == "PCA") {
         estimator = new PCAEstimation<REAL, DIM>(estimator_config["PCAConf"]["k"]);
+    }
+    else if (estimator_config["name"] == "FaCE") {
+        estimator = new FaCENormalEstimate<REAL, DIM>(estimator_config["FaCEConf"], run_output_path);
     }
     else {
         std::cout << "Error: estimator name not found" << std::endl;

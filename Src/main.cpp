@@ -141,7 +141,7 @@ void classic_ipsr(const string& input_name, const string& output_path, int iters
 	classic_ipsr_confg["RandomInitConf"]["seed"] = seed; //TODO 历史遗留问题
 	IPSR_Factory<REAL,DIM> ipsr_factory(input_name, output_path, iters, pointweight, depth, k_neighbors,seed);
 
-	NormalEstimation<REAL, DIM>* estimator = get_estimator_from_json<REAL, DIM>(classic_ipsr_confg["estimator"]);
+	NormalEstimation<REAL, DIM>* estimator = get_estimator_from_json<REAL, DIM>(classic_ipsr_confg["estimator"], output_path);
 	
 	//int (*_update_plan)(Period & p);
 	//for (auto p : update_plane_namelist) {
@@ -271,7 +271,7 @@ void graph_ipsr(const string& input_name, const string& output_path, int iters, 
 	IPSR_Factory<REAL, DIM> seg_ipsr_factory(input_name, output_path, iters, pointweight, seg_depth, k_neighbors, seed);
 	IPSR_Factory<REAL, DIM> global_ipsr_factory(input_name, output_path, iters, pointweight, depth, k_neighbors, seed);
 	
-	NormalEstimation<REAL, DIM>* estimator = get_estimator_from_json<REAL, DIM>(graph_ipsr_conf["estimator"]);
+	NormalEstimation<REAL, DIM>* estimator = get_estimator_from_json<REAL, DIM>(graph_ipsr_conf["estimator"], output_path);
 	
 	// auto update_plan = comb_update7;
 	auto update_plan = get_update_plan_by_name(graph_ipsr_conf["update_plan"]);
@@ -442,210 +442,118 @@ int main(int argc, char *argv[])
 		std::cout << "OpenMP: " << omp_get_num_threads() << " threads ("
 		          << omp_get_max_threads() << " max)" << std::endl;
 	}
-	string input_name;
+
+	std::string input_path;
+	std::string output_path;     // FILE path for the oriented point cloud
+	std::string mode = "graph";  // "classic" or "graph"
+	std::string config_folder;   // optional override
 	int iters = 30;
 	double pointweight = 10;
 	int depth = 10;
 	int k_neighbors = 10;
-	IPSR_TYPE ipsr_type = IPSR_TYPE::CLASSIC_IPSR;
 
-	// Convenience: `./DACPO <input.ply>` — run with sensible defaults.
-	// Output goes next to the input in a `dacpo_out/` subdirectory.
-	bool convenience_mode = (argc == 2 && argv[1][0] != '-');
-	if (convenience_mode) {
-		std::filesystem::path in_path(argv[1]);
-		input_data_root = "";
-		input_name = in_path.string();
-		out_data_root = (in_path.parent_path() / "dacpo_out").string() + "/";
+	auto print_usage = [&]() {
+		printf("Usage: %s --in <path> --out <path> [options]\n", argv[0]);
+		printf("  --in            input point cloud (.ply)\n");
+		printf("  --out           output oriented point cloud (.ply)\n");
+		printf("  --mode          classic | graph    (default: graph)\n");
+		printf("  --iters         IPSR iterations    (default: 30; use 0 to skip)\n");
+		printf("  --depth         octree depth       (default: 10)\n");
+		printf("  --pointWeight   SPSR point weight  (default: 10.0)\n");
+		printf("  --neighbors     k for kNN          (default: 10)\n");
+		printf("  --seed          random seed        (default: 0)\n");
+		printf("  --config_folder override config dir (auto-located by default)\n");
+	};
+
+	if (argc < 2) { print_usage(); return 0; }
+
+	for (int i = 1; i < argc; i += 2) {
+		if (i + 1 >= argc) { print_usage(); return 1; }
+		std::string flag = argv[i];
+		if      (flag == "--in")            input_path = argv[i + 1];
+		else if (flag == "--out")           output_path = argv[i + 1];
+		else if (flag == "--mode")          mode = argv[i + 1];
+		else if (flag == "--iters")         iters = (int)strtol(argv[i + 1], nullptr, 10);
+		else if (flag == "--depth")         depth = (int)strtol(argv[i + 1], nullptr, 10);
+		else if (flag == "--pointWeight")   pointweight = strtod(argv[i + 1], nullptr);
+		else if (flag == "--neighbors")     k_neighbors = (int)strtol(argv[i + 1], nullptr, 10);
+		else if (flag == "--seed")          seed = strtol(argv[i + 1], nullptr, 10);
+		else if (flag == "--config_folder") config_folder = argv[i + 1];
+		else {
+			printf("unknown parameter: %s\n", argv[i]);
+			print_usage();
+			return 1;
+		}
+	}
+
+	if (input_path.empty() || output_path.empty()) {
+		printf("error: --in and --out are required\n");
+		print_usage();
+		return 1;
+	}
+	if (!std::filesystem::exists(input_path)) {
+		printf("error: input file does not exist: %s\n", input_path.c_str());
+		return 1;
+	}
+
+	// Resolve config dir: explicit override, or auto-locate near the executable / CWD
+	if (!config_folder.empty()) {
+		if (ConfigManager::check_config_floder(config_folder)) {
+			ConfigManager::config_floder = config_folder;
+		} else {
+			printf("invalid config folder: %s\n", config_folder.c_str());
+			return 1;
+		}
+	} else {
 		std::filesystem::path exe_dir = std::filesystem::path(argv[0]).parent_path();
+		bool found = false;
 		for (auto p : { exe_dir / "../../../conf/default",
 		                exe_dir / "../../conf/default",
-		                exe_dir / "conf/default" }) {
+		                exe_dir / "conf/default",
+		                std::filesystem::path("conf/default") }) {
 			if (std::filesystem::exists(p / "common.json")) {
 				ConfigManager::config_floder = std::filesystem::canonical(p).string() + "/";
+				found = true;
 				break;
 			}
 		}
-	}
-
-	for (int i = 1; !convenience_mode && i < argc; i += 2)
-	{
-		if (strcmp(argv[i], "--in") == 0)
-		{
-			input_name = argv[i + 1];
-			/*string extension = input_name.substr(min<size_t>(input_name.find_last_of('.'), input_name.length()));
-			for (size_t i = 0; i < extension.size(); ++i)
-				extension[i] = tolower(extension[i]);
-			if (extension != ".ply")
-			{
-				printf("The input shoud be a .ply file\n");
-				return 0;
-			}*/
-		}
-		//else if (strcmp(argv[i], "--out") == 0)
-		//{
-		//	output_name = argv[i + 1];
-		//	/*string extension = output_name.substr(min<size_t>(output_name.find_last_of('.'), output_name.length()));
-		//	for (size_t i = 0; i < extension.size(); ++i)
-		//		extension[i] = tolower(extension[i]);
-		//	if (extension != ".ply")
-		//	{
-		//		printf("The output shoud be a .ply file\n");
-		//		return 0;
-		//	}*/
-		//}
-		else if (strcmp(argv[i], "--iters") == 0)
-		{
-			long v = strtol(argv[i + 1], nullptr, 10);
-			//if (!valid_parameter(v))
-			//{
-			//	printf("invalid value of --iters");
-			//	return 0;
-			//}
-			iters = static_cast<int>(v);
-		}
-		else if (strcmp(argv[i], "--pointWeight") == 0)
-		{
-			pointweight = strtod(argv[i + 1], nullptr);
-			if (pointweight < 0.0 || pointweight == HUGE_VAL || pointweight == -HUGE_VAL)
-			{
-				printf("invalid value of --pointWeight");
-				return 0;
-			}
-		}
-		else if (strcmp(argv[i], "--depth") == 0)
-		{
-			long v = strtol(argv[i + 1], nullptr, 10);
-			if (!valid_parameter(v))
-			{
-				printf("WARNING depth<0");
-			}
-			depth = static_cast<int>(v);
-		}
-		else if (strcmp(argv[i], "--neighbors") == 0)
-		{
-			long v = strtol(argv[i + 1], nullptr, 10);
-			if (!valid_parameter(v))
-			{
-				printf("invalid value of --neighbors");
-				return 0;
-			}
-			k_neighbors = static_cast<int>(v);
-		}
-		else if (strcmp(argv[i], "--input_data_root") == 0)
-		{
-			input_data_root = argv[i + 1];
-		}
-		else if (strcmp(argv[i], "--seed") == 0)
-		{
-			seed = strtol(argv[i + 1], nullptr, 10);
-		}
-		else if (strcmp(argv[i], "--out_data_root") == 0)
-		{
-			out_data_root = argv[i + 1];
-		}
-		else if (strcmp(argv[i], "--ipsr_type") == 0)
-		{
-			ipsr_type = static_cast<IPSR_TYPE>(strtol(argv[i + 1], nullptr, 10));
-		}
-		else if (strcmp(argv[i], "--config_folder") == 0)
-		{
-			std::string _config_folder = argv[i + 1];
-			//assert(ConfigManager::check_config_floder(ConfigManager::default_config_floder));
-			if(ConfigManager::check_config_floder(_config_folder)){
-				ConfigManager::config_floder = argv[i + 1];
-			}else{
-				printf("invalid config path of %s\n", _config_folder.c_str());
-				return 0;
-			}
-		}
-		else
-		{
-			printf("unknown parameter of %s\n", argv[i]);
-			return 0;
+		if (!found) {
+			printf("error: could not auto-locate conf/default; pass --config_folder\n");
+			return 1;
 		}
 	}
 
-	if (argc <= 1 || input_name.empty())
-	{
-		// ask for parameters
-		cout << "Please input the parameters:\n";
-		cout << "--in                      input .ply model\n";
-		cin >> input_name;
-		cout << "--iters       maximum number of iterations\n";
-		cin >> iters;
-		cout << "--pointWeight screened weight of SPSR\n";
-		cin >> pointweight;
-		cout << "--depth       maximum depth of the octree\n";
-		cin >> depth;
-		cout << "--neighbors   number of the nearest neighbors to search\n";
-		cin >> k_neighbors;
-		cout << "--seed        random seed\n";
-		cin >> seed;
-		cout << "--ipsr_type   type of IPSR, \n0 for classic_ipsr\n1 for bitree_ipsr\n2 for graph_ipsr\n3 for test_graph\n";
-		int temp;
-		cin >> temp;
-		ipsr_type = static_cast<IPSR_TYPE>(temp);
-		std::string config_floder;
-		cout << "--config_floder config file floder\n";
-		cin >> config_floder;
-		if (ConfigManager::check_config_floder(config_floder))ConfigManager::config_floder = config_floder;
-		else {
-			// ConfigManager::config_floder = ConfigManager::default_config_floder;
-			cout << "invaild config_floder\n";
-			assert(false);
-		}
-	}
-	
-	// the input file basename
-	string input_path = input_data_root + input_name + ".ply";
-
-	// 允许输入文件名，也可以直接给出绝对路径
-	if (GetFileAttributesA(input_path.c_str()) == INVALID_FILE_ATTRIBUTES) {
-		string user_input_path = input_name;
-		if (GetFileAttributesA(input_path.c_str()) == INVALID_FILE_ATTRIBUTES) {
-			printf("\ninput file %s does not exist\n", input_path.c_str());
-			printf("use %s as input file directly\n", user_input_path.c_str());
-			input_path = user_input_path;
-			// 获得文件名
-			input_name = input_name.substr(input_name.find_last_of('/') + 1);
-			input_name = input_name.substr(input_name.find_last_of('\\') + 1);
-			input_name = input_name.substr(0, input_name.find_last_of('.')); 
-			printf("use %s as input_name\n", input_name.c_str());
-		}
-		else {
-			printf("\nThe input file %s alse does not exist\n", user_input_path.c_str());
-			// print current directory
-			char buffer[FILENAME_MAX];
-			GetCurrentDirectoryA(FILENAME_MAX, buffer);
-			printf("Current directory: %s\n", buffer);
-			return 0;
-		}
+	IPSR_TYPE ipsr_type;
+	if      (mode == "classic") ipsr_type = IPSR_TYPE::CLASSIC_IPSR;
+	else if (mode == "graph")   ipsr_type = IPSR_TYPE::GRAPH_IPSR;
+	else {
+		printf("invalid --mode: %s (use 'classic' or 'graph')\n", mode.c_str());
+		return 1;
 	}
 
-	IPSR_Factory<REAL, DIM> ipsr_factory(input_path, out_data_root, iters, pointweight, depth, k_neighbors,seed);
+	// Intermediate dir lives next to the user's --out file
+	std::filesystem::path out_file(output_path);
+	std::filesystem::path intermediate_dir = out_file.parent_path() / "intermediate";
+	std::filesystem::create_directories(intermediate_dir);
 
-	string output_path = out_data_root + "/" + ipsr_factory.get_resname() + "/" + input_name + "/";
-	// if the output directory does not exist, create it recursively use CreateDirectoryA
-	if (GetFileAttributesA(output_path.c_str()) == INVALID_FILE_ATTRIBUTES){
-		CreateDirectoryA(out_data_root.c_str(), NULL);
-		CreateDirectoryA((out_data_root + "out/").c_str(), NULL);
-	}
+	// Internal pipeline treats output_path as a directory prefix; trailing slash matches
+	// the existing concatenation pattern (e.g. `output_path + resname + "_ori_est.ply"`).
+	std::string subroutine_output = intermediate_dir.string() + "/";
 
-	CreateDirectoryA(output_path.c_str(), NULL);
-
-	//output_name = input_name.substr(0, input_name.find_last_of('.')) + "/out/" + input_name.substr(input_name.find_last_of('/') + 1);
+	// Legacy globals — kept harmless for any code paths that still reference them
+	input_data_root = "";
+	out_data_root = out_file.parent_path().string() + "/";
 
 	printf("\nIterative Poisson Surface Reconstruction (iPSR)\n");
 	printf("Parameters:\n");
 	printf("--in          %s\n", input_path.c_str());
 	printf("--out         %s\n", output_path.c_str());
+	printf("intermediate  %s\n", subroutine_output.c_str());
+	printf("--mode        %s\n", mode.c_str());
 	printf("--iters       %d\n", iters);
 	printf("--pointWeight %f\n", pointweight);
 	printf("--depth       %d\n", depth);
-	printf("--ipsr_type.  %d\n", ipsr_type);
 	printf("--neighbors   %d\n\n", k_neighbors);
-
 
 	global_var::config_j["iters"] = iters;
 	global_var::config_j["pointweight"] = pointweight;
@@ -653,15 +561,27 @@ int main(int argc, char *argv[])
 	global_var::config_j["k_neighbors"] = k_neighbors;
 	global_var::config_j["seed"] = seed;
 	global_var::config_j["input_path"] = input_path;
-	global_var::config_j["output_path"] = output_path;
+	global_var::config_j["output_path"] = subroutine_output;
 
-	global_var::data_output_base = output_path;
+	global_var::data_output_base = subroutine_output;
 
 	timer.Start();
 
 	save_config("common.json");
 	IPSR_ENTRANCE ipsr = IPSR_ENTRANCE_MAP[ipsr_type];
-	ipsr(input_path, output_path, iters, pointweight, depth, k_neighbors);
+	ipsr(input_path, subroutine_output, iters, pointweight, depth, k_neighbors);
+
+	// The pipeline writes <intermediate>/<resname>_ori_est.ply when save_option.ori_est
+	// is true (the default). Find it and copy to the user's --out path.
+	IPSR_Factory<REAL, DIM> resname_factory(input_path, subroutine_output, iters, pointweight, depth, k_neighbors, seed);
+	std::filesystem::path ori_est_path = std::filesystem::path(subroutine_output) / (resname_factory.get_resname() + "_ori_est.ply");
+	if (std::filesystem::exists(ori_est_path)) {
+		std::filesystem::copy_file(ori_est_path, output_path, std::filesystem::copy_options::overwrite_existing);
+		printf("\nWrote oriented point cloud to %s\n", output_path.c_str());
+	} else {
+		printf("\nWARNING: expected oriented point cloud at %s but it was not produced\n", ori_est_path.string().c_str());
+		printf("(Check that save_option.ori_est is true in common.json)\n");
+	}
 
 	printf("%s", lzd_tools::AcumutableTimer::get_time_map().dump(4).c_str());
 	printf("Main finish sussfully!!!");
