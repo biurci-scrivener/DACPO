@@ -3,7 +3,7 @@
     "save_mesh":-1,
     "update_plan":"neumman_ind_ipsr",
     "estimator": {
-        "name": "FieldPropagationEstimate",
+        "name": "FaCE",
         "RandomInitConf": {
             "name": "RandomInit",
             "seed": 10
@@ -16,6 +16,14 @@
             "K":10,
             "lambda":20,
             "alpha":0.2
+        },
+        "FaCEConf": {
+            "name": "FaCE",
+            "exe_path": "/home/egg/svo/build_open/example",
+            "args": "{input} --h --o {output} --open --no-checkpoint",
+            "input_prefix": "face_in",
+            "output_prefix": "face_out",
+            "work_subdir": "graph_ipsr/face_io/"
         },
 
         "FieldPropagationEstimateConf": {
