@@ -4,6 +4,7 @@
         "FaCEConf": {
             "name": "FaCE",
             "exe_path": "/abs/path/to/face",
+            "args": "{input} --h --o {output} --open --no-checkpoint",
             "input_prefix": "face_in",
             "output_prefix": "face_out",
             "work_subdir": "graph_ipsr/face_io/"

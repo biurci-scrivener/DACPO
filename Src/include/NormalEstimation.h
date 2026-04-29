@@ -343,15 +343,32 @@ public:
 template<typename REAL, unsigned int DIM>
 class FaCENormalEstimate : public NormalEstimation<REAL, DIM> {
     std::string _exe_path;
+    std::string _args_template;   // template using {input} and {output}
     std::string _work_dir;        // absolute dir for scratch input/output PLYs
     std::string _input_prefix;
     std::string _output_prefix;
 
     std::atomic<int> _next_segment_id{0};
 
+    static std::string _substitute(const std::string& tmpl,
+                                   const std::string& in_path,
+                                   const std::string& out_path) {
+        std::string out = tmpl;
+        for (auto& kv : { std::make_pair("{input}", in_path),
+                          std::make_pair("{output}", out_path) }) {
+            size_t pos = 0;
+            while ((pos = out.find(kv.first, pos)) != std::string::npos) {
+                out.replace(pos, std::string(kv.first).size(), kv.second);
+                pos += kv.second.size();
+            }
+        }
+        return out;
+    }
+
 public:
     FaCENormalEstimate(nlohmann::json config, const std::string& run_output_path) {
         _exe_path = config.value("exe_path", std::string(""));
+        _args_template = config.value("args", std::string("{input} --h --o {output} --open --no-checkpoint"));
         _input_prefix = config.value("input_prefix", std::string("face_in"));
         _output_prefix = config.value("output_prefix", std::string("face_out"));
 
@@ -369,6 +386,7 @@ public:
         nlohmann::json j;
         j["name"] = "FaCE";
         j["exe_path"] = _exe_path;
+        j["args"] = _args_template;
         j["work_dir"] = _work_dir;
         return j;
     }
@@ -381,10 +399,7 @@ public:
 
         lzd_tools::op2ply(op, input_path.string(), XForm<REAL, DIM + 1>().Identity());
 
-        // exe input --h --o output --open --no-checkpoint
-        std::string command = _exe_path + " " + input_path.string()
-            + " --h --o " + output_path.string()
-            + " --open --no-checkpoint";
+        std::string command = _exe_path + " " + _substitute(_args_template, input_path.string(), output_path.string());
         int rc = std::system(command.c_str());
         if (rc != 0) {
             std::cerr << "FaCE exe returned " << rc << " for segment " << id << ": " << command << std::endl;
