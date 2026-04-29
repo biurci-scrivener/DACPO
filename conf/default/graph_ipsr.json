@@ -3,7 +3,7 @@
         "name": "FieldPropagationEstimate",
         "FaCEConf": {
             "name": "FaCE",
-            "exe_path": "/abs/path/to/face",
+            "exe_path": "/home/egg/svo/build_open/example",
             "args": "{input} --h --o {output} --open --no-checkpoint",
             "input_prefix": "face_in",
             "output_prefix": "face_out",
