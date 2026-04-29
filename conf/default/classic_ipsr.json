@@ -3,7 +3,7 @@
     "save_mesh":-1,
     "update_plan":"neumman_ind_ipsr",
     "estimator": {
-        "name": "SocketNormalEstimation",
+        "name": "RandomInit",
         "RandomInitConf": {
             "name": "RandomInit",
             "seed": 10

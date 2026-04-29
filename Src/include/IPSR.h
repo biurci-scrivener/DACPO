@@ -319,8 +319,12 @@ public:
     }
 
     void init_op_normal(NormalEstimation<REAL,DIM>* estimator){
-        estimator->Estimate(_points_normals);
-        // std::pair<int, std::string> p = std::make_pair(_epoch, init_type_namelist[init_type]);
+        int rc = estimator->Estimate(_points_normals);
+        if (rc != 0) {
+            std::cerr << "FATAL: estimator " << estimator->get_config().value("name", "?")
+                      << " failed (rc=" << rc << "). Aborting so we don't silently pass through input normals." << std::endl;
+            std::exit(2);
+        }
         log_j["init_log"].push_back(estimator->get_config());
     }
 
