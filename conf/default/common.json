@@ -2,7 +2,7 @@
     "self_path": "D:/Documents/zhudoongli/CG/project/ipsr_explore/conf/default/",
     "save_option": {
         "cleaned_mesh": true,
-        "uncleaned_mesh": false,
+        "uncleaned_mesh": true,
         "orientedpoint": true,
         "GT_samples": true,
         "ori_est": true,
