@@ -103,6 +103,13 @@ namespace graph_arg {
 
 
 
+	class NoFlip : public FlipGraph {
+	public:
+		std::vector<bool> flip(FlipableGraph* g);
+		nlohmann::json get_config();
+		nlohmann::json get_log();
+	};
+
 	class OptimFlip : public FlipGraph {
 	public:
 		std::vector<bool> flip(FlipableGraph* g);

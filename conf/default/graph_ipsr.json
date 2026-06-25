@@ -1,10 +1,10 @@
 {
     "estimator": {
-        "name": "FieldPropagationEstimate",
+        "name": "FaCE",
         "FaCEConf": {
             "name": "FaCE",
-            "exe_path": "/home/egg/svo/build_open/example",
-            "args": "{input} --h --o {output} --open --no-checkpoint",
+            "exe_path": "/Users/dscrivener/bu-repo/build_open/example",
+            "args": "{input} --h --o {output} --open",
             "input_prefix": "face_in",
             "output_prefix": "face_out",
             "work_subdir": "graph_ipsr/face_io/"
@@ -161,7 +161,7 @@
             "expand_max_iter":5,
             "seed_selection_alg_spconfig":{
                 "name":"k_selection",
-                "k":200
+                "k":10
             },
             "small_cluster_filter":false
         },
@@ -187,6 +187,9 @@
             "base_alg" :{
                 "name" : "ForestFlip"
             }
+        },
+        "NoFlip":{
+            "name" : "NoFlip"
         }
     }
 }

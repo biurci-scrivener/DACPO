@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <random>
 #include <bgl_api.h>
 #include <queue>
 #include <graph_arg.h>
@@ -256,7 +257,7 @@ inline int find(std::vector<int>& father,int x){
 Tree* Kruskal(std::vector<graph_arg::FlipableNode*> node, std::vector<graph_arg::ConfidenceEdge*> edges){
     
     // shuffle 
-    std::random_shuffle(edges.begin(),edges.end());
+    std::shuffle(edges.begin(), edges.end(), std::mt19937{std::random_device{}()});
     std::vector<graph_arg::ConfidenceEdge*> res_edges;
     std::map<int,int> nid2idx;
     for(int i = 0;i<node.size();i++){
@@ -824,4 +825,17 @@ FlipGraph* graph_arg::FlipGraph::get_flip_arg_from_json(nlohmann::json config_j)
     if(config_j["name"] == "MIQPFlip"){
         return new MIQPFlip(config_j);
     }
+    if(config_j["name"] == "NoFlip"){
+        return new NoFlip();
+    }
+}
+
+std::vector<bool> NoFlip::flip(FlipableGraph* g) {
+    return std::vector<bool>(g->_nodes.size(), false);
+}
+nlohmann::json NoFlip::get_config() {
+    nlohmann::json j; j["name"] = "NoFlip"; return j;
+}
+nlohmann::json NoFlip::get_log() {
+    return nlohmann::json();
 }

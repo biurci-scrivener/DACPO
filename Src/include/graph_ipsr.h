@@ -1636,6 +1636,11 @@ namespace GRAPH_IPSR {
 			for (int i = 0; i < _nodes.size(); i++) {
 				_nodes[i]->iter(controller);
 			}
+			int converged = 0;
+			for (int i = 0; i < _nodes.size(); i++) {
+				if (_nodes[i]->_handle->avg_max_diff < 0.1) converged++;
+			}
+			printf("  [%d/%d patches converged]\n", converged, (int)_nodes.size());
 		}
 
 		void parallel_update(int iter,IpsrController<REAL, DIM>* controller = NULL){
@@ -3647,14 +3652,14 @@ public:
 			}
 			lzd_tools::thread_safe_int finished(0);
 
-			printf("start init\v");
-#pragma omp parallel for
+			printf("start init (%d patches, omp_max_threads=%d)\n", (int)vertexp.size(), omp_get_max_threads());
+#pragma omp parallel for schedule(dynamic)
 			for(int i = 0;i<vertexp.size();i++){
 				vertexp[i]->_handle->init_op_normal(estimator);
-				printf("%d/%d\r",finished.get(), vertexp.size());
 				++finished;
+				printf("  init %d/%d done (thread %d)\n", finished.get(), (int)vertexp.size(), omp_get_thread_num());
 			}
-			printf("\n");
+			printf("init complete\n");
 			
 			// 填充edge
 			for(int i = 0;i<vertexp.size();i++){

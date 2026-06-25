@@ -235,7 +235,7 @@ public:
     IPSR_Factory(const std::string& input_name, const std::string& output_path,
     int iters, double pointweight, int depth, int k_neighbors,int seed = 0
     ){
-        std::string command = "PoissonRecon --in " + input_name + " --out " + output_path + "  --bType 2 --depth " + std::to_string(depth) + " --pointWeight " + std::to_string(pointweight);
+        std::string command = "PoissonRecon --in " + input_name + " --out " + output_path + "  --bType 2 --depth " + std::to_string(depth) + " --pointWeight " + std::to_string(pointweight) + " --threads 1";
         _cmd = split(command);
         _input_name = input_name;
         _output_path = output_path;

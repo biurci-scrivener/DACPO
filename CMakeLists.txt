@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+add_compile_options(-Wno-error=missing-template-arg-list-after-template-kw)
+
 # Set build type if not specified
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -58,6 +60,13 @@ file(GLOB_RECURSE HEADERS
     "Src/include/3dparty/*.h"
 )
 
+# Rename Turk PLY symbols to avoid collision with Open3D's rply
+set_property(SOURCE "Src/include/3dparty/PlyFile.cpp" PROPERTY COMPILE_DEFINITIONS
+    ply_close=turk_ply_close
+    ply_write=turk_ply_write
+    ply_read=turk_ply_read
+)
+
 # Create executable
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
@@ -107,6 +116,23 @@ endif()
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/bin/Debug
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin/Release
+)
+
+# Standalone DACPO-modified PoissonRecon binary (for subprocess reconstruction)
+# Compiled WITHOUT OpenMP to avoid inheriting corrupted OMP state from parent.
+# tools/omp.h provides stubs; #pragma omp directives are no-ops without -fopenmp.
+add_executable(dacpo_psr
+    tools/dacpo_psr.cpp
+    Src/include/3dparty/PlyFile.cpp
+)
+target_include_directories(dacpo_psr PRIVATE
+    ${CMAKE_SOURCE_DIR}/tools
+    ${CMAKE_SOURCE_DIR}/Src/include/3dparty
+)
+target_compile_options(dacpo_psr PRIVATE -Wno-error=missing-template-arg-list-after-template-kw)
+set_target_properties(dacpo_psr PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin/Release
 )
 
