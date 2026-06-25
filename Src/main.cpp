@@ -340,6 +340,33 @@ void graph_ipsr(const string& input_name, const string& output_path, int iters, 
 			printf("\r graph iters %d/%d", i,iters);
 		}
 		ipsr_graph.update_all_op();
+
+		printf("\n=== Per-patch GT alignment (own points, best whole-patch flip) ===\n");
+		printf("  %-8s  %-10s  %-10s\n", "patch", "mean_dot", "std_dot");
+		double sum_mean = 0, sum_std = 0;
+		for (int n = 0; n < (int)ipsr_graph._nodes.size(); n++) {
+			auto est = ipsr_graph._nodes[n]->get_self_op();
+			auto gt  = ipsr_graph._nodes[n]->get_self_gt();
+			double signed_sum = 0;
+			for (int j = 0; j < (int)est.size(); j++)
+				signed_sum += dot<REAL,DIM>(est[j].second, gt[j].second);
+			double sign = signed_sum >= 0 ? 1.0 : -1.0;
+			double s = 0, s2 = 0;
+			for (int j = 0; j < (int)est.size(); j++) {
+				double d = sign * dot<REAL,DIM>(est[j].second, gt[j].second);
+				s += d;
+				s2 += d * d;
+			}
+			double mean = est.size() > 0 ? s / est.size() : 0;
+			double var  = est.size() > 1 ? s2 / est.size() - mean * mean : 0;
+			double sd   = var > 0 ? sqrt(var) : 0;
+			printf("  %-8d  %-10.4f  %-10.4f\n", n, mean, sd);
+			sum_mean += mean;
+			sum_std  += sd;
+		}
+		int np = (int)ipsr_graph._nodes.size();
+		printf("  %-8s  %-10.4f  %-10.4f\n", "avg", sum_mean / np, sum_std / np);
+		printf("================================================================\n");
 	}
 
 	if (!ConfigManager::get_common_config()["no_save"]) {
