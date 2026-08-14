@@ -307,6 +307,18 @@ void graph_ipsr(const string& input_name, const string& output_path, int iters, 
 	
 	sp_config["ipsr_spilter"] = al->get_config();
 	ipsr_graph.update_all_op();
+	for (int n = 0; n < (int)ipsr_graph._nodes.size(); n++) {
+		auto& handle = ipsr_graph._nodes[n]->_handle;
+		auto& op_idx = ipsr_graph._nodes[n]->_op_idx;
+		auto& op_type = ipsr_graph._nodes[n]->_op_type;
+		std::vector<int> norm_type(handle->_points_normals.size(), 0);
+		for (int j = 0; j < (int)op_idx.size(); j++)
+			norm_type[op_idx[j]] = op_type[j];
+		lzd_tools::op2ply(handle->_gt_points_normals,
+			handle->get_out_put_base("/debug/") + "sampled_patch_" + std::to_string(n) + ".ply",
+			XForm<REAL, DIM + 1>().Identity(),
+			std::make_pair(norm_type, lzd_tools::get_regular_colormap(0, 1)));
+	}
 	if (!ConfigManager::get_common_config()["no_save"]) {
 		ipsr_graph.save_seg("/graph_ipsr/lg_seg/", "init");
 		ipsr_graph.save_gt("/graph_ipsr/lg_seg/");

@@ -399,10 +399,16 @@ public:
 
         lzd_tools::op2ply(op, input_path.string(), XForm<REAL, DIM + 1>().Identity());
 
-        std::string command = _exe_path + " " + _substitute(_args_template, input_path.string(), output_path.string());
-        int rc = std::system(command.c_str());
+        std::string shell_cmd = _exe_path + " " + _substitute(_args_template, input_path.string(), output_path.string()) + " >/dev/null 2>&1";
+        const char* sh_argv[] = {"/bin/sh", "-c", shell_cmd.c_str(), nullptr};
+        pid_t pid;
+        int spawn_err = posix_spawn(&pid, "/bin/sh", nullptr, nullptr,
+                                    const_cast<char**>(sh_argv), environ);
+        int rc;
+        if (spawn_err != 0) { rc = -1; }
+        else { int st; waitpid(pid, &st, 0); rc = WIFEXITED(st) ? WEXITSTATUS(st) : -1; }
         if (rc != 0) {
-            std::cerr << "FaCE exe returned " << rc << " for segment " << id << ": " << command << std::endl;
+            std::cerr << "FaCE exe returned " << rc << " for segment " << id << std::endl;
             assert(false);
             return -1;
         }

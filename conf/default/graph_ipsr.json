@@ -1,6 +1,6 @@
 {
     "estimator": {
-        "name": "FaCE",
+        "name": "FieldPropagationEstimate",
         "FaCEConf": {
             "name": "FaCE",
             "exe_path": "/Users/dscrivener/bu-repo/build_open/example",
@@ -161,7 +161,7 @@
             "expand_max_iter":5,
             "seed_selection_alg_spconfig":{
                 "name":"k_selection",
-                "k":10
+                "k":200
             },
             "small_cluster_filter":false
         },

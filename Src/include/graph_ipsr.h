@@ -41,9 +41,10 @@ namespace GRAPH_IPSR {
 	// 后续可能会加入置信度等属性
 	template<typename REAL, unsigned int DIM>
 	class graph_vertex {
+	public:
+		std::vector<int> _op_idx;//_op中的点在_handle->_points_normals中的索引
 	private:
 		std::vector<std::vector<float>> _diff_log;// _op中每个在_points_normals中的点的diff的log
-		std::vector<int> _op_idx;//_op中的点在_handle->_points_normals中的索引
 		bool init_flag = false;
 		int inv_times = 0;//翻转的次数
 

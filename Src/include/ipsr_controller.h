@@ -318,6 +318,8 @@ public:
             op[i].first = iXForm * op[i].first;
         }
         printf("down sample points from %d to %d\n",(int)ori.size(), (int)op.size());
+        rmkdir(global_var::data_output_base + "/debug/");
+        lzd_tools::op2ply(op, global_var::data_output_base + "/debug/downsampled.ply", XForm<REAL, DIM + 1>().Identity());
         return op;
     }
 

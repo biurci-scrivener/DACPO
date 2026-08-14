@@ -318,6 +318,10 @@ public:
         return 0;
     }
 
+    void dump_points(const std::string& path) {
+        lzd_tools::op2ply(_points_normals, path, XForm<REAL, DIM + 1>().Identity());
+    }
+
     void init_op_normal(NormalEstimation<REAL,DIM>* estimator){
         int rc = estimator->Estimate(_points_normals);
         if (rc != 0) {
